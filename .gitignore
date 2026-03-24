@@ -1,0 +1,71 @@
+# OS-specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.iml
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Java / Maven (Backend)
+backend/target/
+backend/*.jar
+backend/*.war
+backend/*.ear
+backend/*.class
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/logs/
+backend/*.log
+
+# Node.js / Frontend / Admin-Frontend
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+.nyc_output/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.svelte-kit/
+.nuxt/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Build outputs & Miscellaneous
+*.log
+*.zip
+*.tar.gz
+*.rar
+frontend.zip
+
+# Ignore specific large files if any (e.g. database chunks locally)
+*.sqlite
+*.sqlite3
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
