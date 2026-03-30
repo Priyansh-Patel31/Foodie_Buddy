@@ -13,9 +13,14 @@ public class Category {
 
     private String name;
 
+    private String imageUrl;
+
+    private Integer displayOrder;
+
     private Boolean active;
 
     public void onCreate() {
         if (this.active == null) this.active = true;
+        if (this.displayOrder == null) this.displayOrder = 0;
     }
 }

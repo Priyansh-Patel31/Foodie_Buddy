@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.4",
     "@reduxjs/toolkit": "^2.11.2",
     "antd": "^6.3.1",
     "autoprefixer": "^10.4.27",
     "axios": "^1.13.6",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.35.1",
     "lucide-react": "^0.577.0",
     "postcss": "^8.5.8",
@@ -23,6 +26,7 @@
     "react-hot-toast": "^2.6.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.1",
+    "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {

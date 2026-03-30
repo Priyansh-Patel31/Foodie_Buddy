@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 public interface MenuItemRepository extends MongoRepository<MenuItem, String> {
-    List<MenuItem> findByRestaurantId(String restaurantId);
     List<MenuItem> findByCategoryId(String categoryId);
+    List<MenuItem> findByIsAvailableTrue();
+    List<MenuItem> findByCategoryIdAndIsAvailableTrue(String categoryId);
+    List<MenuItem> findByNameContainingIgnoreCase(String name);
 }

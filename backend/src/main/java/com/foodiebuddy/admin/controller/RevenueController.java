@@ -1,39 +1,37 @@
 package com.foodiebuddy.admin.controller;
 
-import com.foodiebuddy.admin.dto.*;
-import com.foodiebuddy.admin.service.RevenueService;
+import com.foodiebuddy.admin.dto.ApiResponse;
+import com.foodiebuddy.admin.entity.FinancialTransaction;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/revenue")
+@RequestMapping("/api/admin/financials")
 @RequiredArgsConstructor
-@Tag(name = "Revenue Analytics", description = "Revenue & Commission APIs")
+@Tag(name = "Financials", description = "Financial Transaction APIs")
 public class RevenueController {
 
-    private final RevenueService revenueService;
+    private final MongoTemplate mongoTemplate;
 
-    @GetMapping
-    @Operation(summary = "Get overall revenue stats")
-    public ResponseEntity<ApiResponse<RevenueStatsDTO>> getStats() {
-        return ResponseEntity.ok(ApiResponse.success(revenueService.getRevenueStats()));
+    @GetMapping("/transactions")
+    @Operation(summary = "Get all financial transactions")
+    public ResponseEntity<ApiResponse<List<FinancialTransaction>>> getAllTransactions() {
+        List<FinancialTransaction> transactions = mongoTemplate.findAll(FinancialTransaction.class);
+        return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 
-    @GetMapping("/daily")
-    @Operation(summary = "Get daily revenue for last N days")
-    public ResponseEntity<ApiResponse<List<DailyRevenueDTO>>> getDaily(
-            @RequestParam(defaultValue = "30") int days) {
-        return ResponseEntity.ok(ApiResponse.success(revenueService.getDailyRevenue(days)));
-    }
-
-    @GetMapping("/restaurants")
-    @Operation(summary = "Get revenue per restaurant")
-    public ResponseEntity<ApiResponse<List<RestaurantRevenueDTO>>> getByRestaurant() {
-        return ResponseEntity.ok(ApiResponse.success(revenueService.getRevenueByRestaurant()));
+    @PostMapping("/transactions")
+    @Operation(summary = "Create a financial transaction")
+    public ResponseEntity<ApiResponse<FinancialTransaction>> createTransaction(
+            @RequestBody FinancialTransaction transaction) {
+        transaction.onCreate();
+        FinancialTransaction saved = mongoTemplate.save(transaction);
+        return ResponseEntity.ok(ApiResponse.success("Transaction recorded", saved));
     }
 }

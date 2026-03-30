@@ -1,57 +1,51 @@
 package com.foodiebuddy.admin.controller;
 
-import com.foodiebuddy.admin.dto.ApiResponse;
-import com.foodiebuddy.admin.dto.OrderDTO;
+import com.foodiebuddy.admin.dto.*;
 import com.foodiebuddy.admin.entity.enums.OrderStatus;
+import com.foodiebuddy.admin.security.JwtTokenProvider;
 import com.foodiebuddy.admin.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/orders")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
-@Tag(name = "Order Monitoring", description = "Order Monitoring APIs")
+@Tag(name = "Orders", description = "Order Management APIs")
 public class OrderController {
 
     private final OrderService orderService;
+    private final JwtTokenProvider tokenProvider;
 
-    @GetMapping
-    @Operation(summary = "List orders with filters")
-    public ResponseEntity<ApiResponse<Page<OrderDTO>>> getAll(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String restaurantId,
-            @RequestParam(required = false) String userId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @PageableDefault(size = 10) Pageable pageable) {
-
-        Page<OrderDTO> result;
-        if (status != null && !status.isBlank()) {
-            result = orderService.getByStatus(OrderStatus.valueOf(status.toUpperCase()), pageable);
-        } else if (restaurantId != null) {
-            result = orderService.getByRestaurant(restaurantId, pageable);
-        } else if (userId != null) {
-            result = orderService.getByUser(userId, pageable);
-        } else if (startDate != null && endDate != null) {
-            result = orderService.getByDateRange(startDate, endDate, pageable);
-        } else {
-            result = orderService.getAllOrders(pageable);
-        }
-        return ResponseEntity.ok(ApiResponse.success(result));
+    @PostMapping("/place")
+    @Operation(summary = "Place a new order (Customer)")
+    public ResponseEntity<ApiResponse<OrderDTO>> placeOrder(
+            @RequestBody PlaceOrderRequest request, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        OrderDTO order = orderService.placeOrder(request, userId);
+        return ResponseEntity.ok(ApiResponse.success("Order placed successfully", order));
     }
 
-    @GetMapping("/{id}")
-    @Operation(summary = "Get order details")
-    public ResponseEntity<ApiResponse<OrderDTO>> getById(@PathVariable String id) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.getById(id)));
+    @GetMapping("/my")
+    @Operation(summary = "Get my orders (Customer)")
+    public ResponseEntity<ApiResponse<List<OrderDTO>>> getMyOrders(HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.getByCustomer(userId)));
+    }
+
+    @GetMapping("/my/{orderId}")
+    @Operation(summary = "Get specific order (Customer)")
+    public ResponseEntity<ApiResponse<OrderDTO>> getMyOrder(@PathVariable String orderId) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getById(orderId)));
+    }
+
+    private String extractUserId(HttpServletRequest request) {
+        String token = request.getHeader("Authorization").substring(7);
+        return tokenProvider.getUserIdFromToken(token);
     }
 }

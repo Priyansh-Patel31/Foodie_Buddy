@@ -1,7 +1,8 @@
-import { Star, Plus, Minus } from 'lucide-react';
+import { Star, Plus, Minus, Check } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addItem, updateQuantity } from '../../features/cart/cartSlice';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Topping } from '../../features/admin/adminSlice';
 
 export interface FoodItemCardProps {
   id: string;
@@ -10,10 +11,11 @@ export interface FoodItemCardProps {
   description: string;
   price: number;
   image: string;
-  isVegetarian: boolean;
+  isVegetarian?: boolean;
   isBestseller?: boolean;
   rating?: number;
   votes?: number;
+  toppings?: Topping[];
 }
 
 export default function FoodItemCard({
@@ -23,22 +25,17 @@ export default function FoodItemCard({
   description,
   price,
   image,
-  isVegetarian,
+  isVegetarian = true,
   isBestseller,
   rating,
-  votes
+  votes,
+  toppings = []
 }: FoodItemCardProps) {
   const dispatch = useAppDispatch();
   const cartItem = useAppSelector(state => state.cart.items.find(item => item.id === id));
   
   const handleAddToCart = () => {
-    dispatch(addItem({
-      id,
-      restaurantId,
-      name,
-      price,
-      image
-    }));
+    dispatch(addItem({ id, restaurantId, name, price, image }));
   };
 
   const handleUpdateQuantity = (newQuantity: number) => {
@@ -74,9 +71,22 @@ export default function FoodItemCard({
           </div>
         )}
         
-        <p className="text-gray-500 text-sm line-clamp-2 md:line-clamp-3 leading-relaxed mt-auto">
+        <p className="text-gray-500 text-sm line-clamp-2 md:line-clamp-3 leading-relaxed mt-1">
           {description}
         </p>
+
+        {toppings.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-100 border-dashed">
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-2">Available Toppings</p>
+            <div className="flex flex-wrap gap-1.5">
+              {toppings.map((t, idx) => (
+                 <span key={idx} className="flex items-center gap-1 text-[10px] font-bold text-gray-600 bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">
+                   <Check size={10} className="text-green-500"/> {t.name} <span className="text-primary-600 opacity-80">(+₹{t.price})</span>
+                 </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Image & Action Section */}

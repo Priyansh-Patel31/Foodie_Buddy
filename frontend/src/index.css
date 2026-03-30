@@ -29,6 +29,61 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+@utility btn-glass {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover:not(:disabled) {
+    background: rgba(15, 23, 42, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@utility btn-glass-primary {
+  background: rgba(249, 115, 22, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover:not(:disabled) {
+    background: rgba(249, 115, 22, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3);
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+@utility btn-glass-error {
+  background: rgba(220, 38, 38, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.9);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3);
+  }
+}
+
 @utility hide-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
@@ -64,4 +119,71 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8; 
+}
+
+/* Custom animations for the orbital timeline */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.duration-300 { transition-duration: 300ms; }
+.duration-700 { transition-duration: 700ms; }
+.duration-1000 { transition-duration: 1000ms; }
+
+/* Backdrop blur & Extra Utility classes */
+.backdrop-blur-lg { backdrop-filter: blur(16px); }
+.backdrop-blur-2xl { backdrop-filter: blur(24px); }
+.z-10 { z-index: 10; }
+.z-50 { z-index: 50; }
+.shadow-orbital { box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); }
+.scale-125 { transform: scale(1.25); }
+.scale-150 { transform: scale(1.5); }
+.opacity-70 { opacity: 0.7; }
+.opacity-50 { opacity: 0.5; }
+
+/* Inset Shadow Fallbacks for Button */
+.inset-shadow-2xs { box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.05); }
+.inset-shadow-white\/10 { box-shadow: inset 0 2px 4px 0 rgb(255 255 255 / 0.1); }
+
+/* PDF EOD Report Formatting */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+    padding: 2cm !important;
+  }
+  .print-hide {
+    display: none !important;
+  }
+  .glass {
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }

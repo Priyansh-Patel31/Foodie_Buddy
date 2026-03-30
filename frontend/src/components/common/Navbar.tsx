@@ -1,13 +1,24 @@
-import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Search, Menu, MapPin, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, Search, Menu, MapPin, ChevronDown, LogOut } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { openCart } from '../../features/cart/cartSlice';
+import { logout } from '../../features/auth/authSlice';
+import AnimatedLogo from './AnimatedLogo';
 
 export default function Navbar() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
   const cartItemsCount = useAppSelector(state => 
     state.cart.items.reduce((total, item) => total + item.quantity, 0)
   );
+
+  const handleLogout = () => {
+    localStorage.removeItem('foodieBuddyToken');
+    localStorage.removeItem('foodieBuddyAuth');
+    dispatch(logout());
+    navigate('/');
+  };
 
   return (
     <header className="glass sticky top-0 z-40 shadow-sm border-b border-gray-200/50">
@@ -15,10 +26,7 @@ export default function Navbar() {
         {/* Left Section: Logo & Location */}
         <div className="flex items-center gap-4 sm:gap-8 cursor-pointer">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-gradient-to-br from-primary-500 to-primary-700 text-white p-2.5 rounded-xl shadow-lg group-hover:shadow-primary-500/30 transition-shadow">
-              <span className="font-black text-2xl leading-none font-outfit">F</span>
-            </div>
-            <span className="font-black text-2xl tracking-tight text-gray-900 hidden sm:block font-outfit">Foodie</span>
+            <AnimatedLogo />
           </Link>
           
           <div className="hidden lg:flex items-center gap-2 hover:bg-gray-100/80 p-2 rounded-xl transition-colors">
@@ -60,12 +68,37 @@ export default function Navbar() {
             <Search className="w-5 h-5" />
           </button>
           
-          <button className="hidden sm:flex items-center gap-2 hover:bg-white p-2 rounded-full transition-all border border-transparent hover:border-gray-200 hover:shadow-sm">
-            <div className="bg-gray-100 p-2 rounded-full text-gray-700">
-              <User className="w-5 h-5" />
+          {isAuthenticated && user ? (
+            /* Authenticated User: Show name + Sign Out */
+            <div className="hidden sm:flex items-center gap-2 bg-gray-100/50 p-1 rounded-full border border-gray-200">
+              <div className="flex items-center gap-2 p-1.5 px-3">
+                <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-orange-400 rounded-full flex items-center justify-center text-white font-black text-xs shadow-sm">
+                  {user.name?.charAt(0) || 'U'}
+                </div>
+                <span className="text-sm font-bold text-gray-800 max-w-[100px] truncate">{user.name}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-100 transition-all text-sm font-bold"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
             </div>
-            <span className="text-sm font-bold text-gray-800 pr-2">Sign In</span>
-          </button>
+          ) : (
+            /* Guest: Show Sign In / Sign Up */
+            <div className="hidden sm:flex items-center gap-1 bg-gray-100/50 p-1 rounded-full border border-gray-200">
+              <Link to="/login" className="flex items-center gap-2 hover:bg-white p-1.5 px-3 rounded-full transition-all border border-transparent hover:shadow-sm">
+                <div className="bg-primary-100 p-1.5 rounded-full text-primary-600">
+                  <User className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-bold text-gray-800">Sign In</span>
+              </Link>
+              <Link to="/register" className="text-sm font-bold text-primary-600 hover:text-primary-700 px-3 transition-colors">
+                Sign Up
+              </Link>
+            </div>
+          )}
 
           <button 
             onClick={() => dispatch(openCart())}
@@ -79,9 +112,16 @@ export default function Navbar() {
             )}
           </button>
 
-          <button className="sm:hidden text-gray-700 hover:text-primary-600 p-2">
-            <Menu className="w-6 h-6" />
-          </button>
+          {/* Mobile: Sign Out or Menu */}
+          {isAuthenticated ? (
+            <button onClick={handleLogout} className="sm:hidden text-red-500 hover:text-red-600 p-2">
+              <LogOut className="w-6 h-6" />
+            </button>
+          ) : (
+            <button className="sm:hidden text-gray-700 hover:text-primary-600 p-2">
+              <Menu className="w-6 h-6" />
+            </button>
+          )}
         </div>
       </div>
     </header>

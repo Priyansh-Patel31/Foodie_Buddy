@@ -1,78 +1,45 @@
 import { useState } from 'react';
+import { useAppSelector } from '../../store/hooks';
 import { Star, Clock, Info, Heart } from 'lucide-react';
 import FoodItemCard from '../../components/restaurant/FoodItemCard';
 
-// Mock Data
+// Restaurant Metdata (Static layout wrapper)
 const MOCK_RESTAURANT = {
   id: 'r1',
-  name: 'Pizza Hut',
+  name: 'Foodie Buddy Kitchen',
   image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=1600&auto=format&fit=crop&q=80',
-  rating: 4.2,
+  rating: 4.8,
   reviews: '5K+',
-  deliveryTime: '30-40 min',
+  deliveryTime: '25-35 min',
   location: 'Downtown Square',
-  tags: ['Pizza', 'Fast Food', 'Italian', 'Beverages'],
+  tags: ['Premium Kitchen', 'Global Cuisines', 'Beverages'],
   offer: '50% OFF up to ₹100'
 };
 
-const MOCK_MENU = [
-  {
-    category: 'Recommended',
-    items: [
-      {
-        id: 'f1',
-        restaurantId: 'r1',
-        name: 'Margherita Pizza',
-        description: 'Classic delight with 100% real mozzarella cheese. A favorite for cheese lovers seeking a pure taste experience.',
-        price: 249,
-        image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&auto=format&fit=crop&q=80',
-        isVegetarian: true,
-        isBestseller: true,
-        rating: 4.5,
-        votes: 1205
-      },
-      {
-        id: 'f2',
-        restaurantId: 'r1',
-        name: 'Pepperoni Pizza',
-        description: 'American classic with spicy pepperoni and gooey cheese. Perfect balance of spice and texture.',
-        price: 349,
-        image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=500&auto=format&fit=crop&q=80',
-        isVegetarian: false,
-        isBestseller: true,
-        rating: 4.8,
-        votes: 856
-      }
-    ]
-  },
-  {
-    category: 'Sides & Beverages',
-    items: [
-      {
-        id: 'f3',
-        restaurantId: 'r1',
-        name: 'Garlic Breadsticks',
-        description: 'Freshly baked breadsticks topped with garlic butter and herbs.',
-        price: 149,
-        image: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=500&auto=format&fit=crop&q=80',
-        isVegetarian: true
-      },
-      {
-        id: 'f4',
-        restaurantId: 'r1',
-        name: 'Cold Coffee',
-        description: 'Creamy cold coffee to beat the heat. Made with premium espresso.',
-        price: 129,
-        image: 'https://images.unsplash.com/photo-1461023058943-07cb1ce91abc?w=500&auto=format&fit=crop&q=80',
-        isVegetarian: true
-      }
-    ]
-  }
-];
-
 export default function RestaurantDetailPage() {
-  const [activeCategory, setActiveCategory] = useState(MOCK_MENU[0].category);
+  const { menuItems } = useAppSelector(state => state.admin);
+  const [activeCategory, setActiveCategory] = useState<string>('Main Course');
   const [isLiked, setIsLiked] = useState(false);
+
+  // Group Dynamic Redux Admin Data by Category
+  const groupedMenu = menuItems.filter(item => item.isAvailable).reduce((acc, item) => {
+    const cat = item.categoryName || 'Other';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push({
+      id: item.id,
+      restaurantId: MOCK_RESTAURANT.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      image: item.imageUrl,
+      toppings: [],
+      isVegetarian: item.isVegetarian ?? true,
+      isBestseller: false 
+    });
+    return acc;
+  }, {} as Record<string, any[]>);
+
+  const categories = Object.keys(groupedMenu);
 
   return (
     <div className="w-full bg-gray-50 min-h-screen pb-24">
@@ -157,48 +124,52 @@ export default function RestaurantDetailPage() {
           <div className="hidden md:block w-1/4 shrink-0">
             <div className="sticky top-28 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
               <h3 className="text-lg font-black text-gray-900 mb-4 px-4 font-outfit uppercase tracking-wider">Top Menu</h3>
-              <div className="space-y-1">
-                {MOCK_MENU.map(category => (
-                  <button
-                    key={category.category}
-                    onClick={() => {
-                       setActiveCategory(category.category);
-                       document.getElementById(category.category)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }}
-                    className={`w-full text-left px-4 py-3 rounded-xl font-bold transition-all text-sm
-                      ${activeCategory === category.category 
-                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                  >
-                    {category.category}
-                  </button>
-                ))}
-              </div>
+              {categories.length === 0 ? (
+                <p className="text-sm p-4 text-gray-400 font-bold">Menu is currently empty.</p>
+              ) : (
+                <div className="space-y-1">
+                  {categories.map(category => (
+                    <button
+                      key={category}
+                      onClick={() => {
+                         setActiveCategory(category);
+                         document.getElementById(category)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className={`w-full text-left px-4 py-3 rounded-xl font-bold transition-all text-sm
+                        ${activeCategory === category 
+                          ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-md' 
+                          : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Mobile Category Navigation (Horizontal Scroll) */}
           <div className="md:hidden sticky top-20 z-30 bg-gray-50/95 backdrop-blur-md py-4 -mx-4 px-4 shadow-sm">
             <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x">
-              {MOCK_MENU.map(category => (
+              {categories.map(category => (
                 <button
-                  key={`mobile-${category.category}`}
+                  key={`mobile-${category}`}
                   onClick={() => {
-                     setActiveCategory(category.category);
-                     const el = document.getElementById(category.category);
+                     setActiveCategory(category);
+                     const el = document.getElementById(category);
                      if (el) {
                        const y = el.getBoundingClientRect().top + window.pageYOffset - 140;
                        window.scrollTo({top: y, behavior: 'smooth'});
                      }
                   }}
                   className={`snap-start px-5 py-2.5 rounded-full whitespace-nowrap font-bold text-sm shadow-sm transition-all
-                    ${activeCategory === category.category 
+                    ${activeCategory === category 
                       ? 'bg-primary-600 text-white border-primary-600' 
                       : 'bg-white text-gray-600 border border-gray-200'
                     }`}
                 >
-                  {category.category}
+                  {category}
                 </button>
               ))}
             </div>
@@ -206,23 +177,29 @@ export default function RestaurantDetailPage() {
           
           {/* Right Contents - Menu Sections */}
           <div className="flex-1 space-y-10 lg:space-y-16">
-            {MOCK_MENU.map((section, sIdx) => (
-              <div key={section.category} id={section.category} className="scroll-mt-36">
+            {categories.map((category, sIdx) => (
+              <div key={category} id={category} className="scroll-mt-36">
                 <h2 className="text-2xl lg:text-3xl font-black text-gray-900 mb-6 font-outfit tracking-tight">
-                  {section.category}
+                  {category}
                 </h2>
                 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 lg:gap-6">
-                  {section.items.map((item) => (
+                  {groupedMenu[category].map((item: any) => (
                     <FoodItemCard key={item.id} {...item} />
                   ))}
                 </div>
                 
-                {sIdx !== MOCK_MENU.length - 1 && (
+                {sIdx !== categories.length - 1 && (
                   <div className="mt-10 h-px w-full bg-gray-200 max-w-sm mx-auto opacity-50 block xl:hidden" />
                 )}
               </div>
             ))}
+            
+            {categories.length === 0 && (
+              <div className="h-40 flex items-center justify-center bg-white rounded-3xl border border-gray-100 shadow-sm">
+                 <p className="text-gray-400 font-bold">The Admin has not added any dishes to the menu yet.</p>
+              </div>
+            )}
           </div>
 
         </div>

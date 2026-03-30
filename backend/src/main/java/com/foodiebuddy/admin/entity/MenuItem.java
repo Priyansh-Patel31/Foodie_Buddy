@@ -2,9 +2,10 @@ package com.foodiebuddy.admin.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "menu_items")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -19,9 +20,22 @@ public class MenuItem {
 
     private BigDecimal price;
 
-    @DocumentReference(lazy = true)
-    private Restaurant restaurant;
+    private String imageUrl;
 
-    @DocumentReference(lazy = true)
-    private Category category;
+    private String categoryId;
+    private String categoryName;
+
+    private Boolean isAvailable;
+
+    private Boolean isVegetarian;
+
+    // Ingredient references for auto inventory deduction
+    // Each entry: { ingredientId: "xxx", quantityRequired: 1.0 }
+    @Builder.Default
+    private List<IngredientRequirement> ingredients = new ArrayList<>();
+
+    public void onCreate() {
+        if (this.isAvailable == null) this.isAvailable = true;
+        if (this.isVegetarian == null) this.isVegetarian = false;
+    }
 }

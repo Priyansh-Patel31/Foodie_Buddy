@@ -1,7 +1,9 @@
 package com.foodiebuddy.admin.entity;
 
+import com.foodiebuddy.admin.entity.enums.Role;
 import com.foodiebuddy.admin.entity.enums.UserStatus;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -15,18 +17,31 @@ public class User {
 
     private String name;
 
+    @Indexed(unique = true)
     private String email;
+
+    private String password;
 
     private String phone;
 
-    private String address;
+    private Role role;
 
     private UserStatus status;
 
+    // Location fields for delivery
+    private Double latitude;
+    private Double longitude;
+    private String addressText;
+
     private LocalDateTime createdAt;
+    
+    // Payroll & Attendance Fields
+    private java.math.BigDecimal baseSalary;
+    private Integer leavesTakenThisMonth;
 
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) this.status = UserStatus.ACTIVE;
+        if (this.role == null) this.role = Role.ROLE_CUSTOMER;
     }
 }

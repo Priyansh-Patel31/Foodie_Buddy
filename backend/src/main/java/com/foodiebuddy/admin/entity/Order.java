@@ -3,7 +3,6 @@ package com.foodiebuddy.admin.entity;
 import com.foodiebuddy.admin.entity.enums.OrderStatus;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,25 +16,48 @@ public class Order {
     @Id
     private String id;
 
-    @DocumentReference(lazy = true)
-    private User user;
+    private String customerId;
+    private String customerName;
+    private String customerPhone;
 
-    @DocumentReference(lazy = true)
-    private Restaurant restaurant;
+    // Customer delivery location
+    private Double customerLatitude;
+    private Double customerLongitude;
+    private String customerAddress;
 
+    // Price breakdown (no tax)
+    private BigDecimal subtotal;
+    private BigDecimal deliveryFee;
     private BigDecimal totalAmount;
 
+    // Distance from restaurant
     private Double distanceKm;
-
-    private BigDecimal commissionAmount;
-
-    private BigDecimal platformRevenue;
-
-    private BigDecimal restaurantRevenue;
 
     private OrderStatus status;
 
+    // Staff assignments
+    private String assignedChefId;
+    private String assignedChefUserName;
+    private String assignedDeliveryUserId;
+    private String assignedDeliveryUserName;
+    private String managingManagerId;
+    private String managingManagerName;
+
+    // Advanced Financial Tracking
+    private BigDecimal customerCharge;
+    private BigDecimal calculatedProfit;
+
+    // Proof of delivery
+    private String proofOfDeliveryUrl;
+
+    // Timestamps
     private LocalDateTime createdAt;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime preparingAt;
+    private LocalDateTime readyAt;
+    private LocalDateTime pickedUpAt;
+    private LocalDateTime deliveredAt;
+    private LocalDateTime cancelledAt;
 
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
