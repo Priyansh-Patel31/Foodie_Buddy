@@ -29,7 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final MongoTemplate mongoTemplate;
 
     // We store references to seeded users for order creation
-    private User adminUser, managerUser, chefUser, deliveryUser, sousChefUser, riderTwoUser;
+    private User adminUser, managerUser, chefUser, deliveryUser;
     private User customerPriya, customerAmit, customerSneha, customerRaj, customerTom, customerHappy;
 
     @Override
@@ -94,7 +94,7 @@ public class DataInitializer implements CommandLineRunner {
 
         createMenuItem("Truffle Pasta", "Creamy black truffle pasta with parmesan", new BigDecimal("450"),
                 mainCourse.getId(), mainCourse.getName(), true,
-                "https://images.unsplash.com/photo-1621996316514-14ebd679f291?w=800&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1556761223-4c4282c73f77?w=800&auto=format&fit=crop&q=80",
                 List.of(new IngredientRequirement(cheese.getId(), "Cheese", 0.15)));
 
         createMenuItem("Margherita Pizza", "Classic stone-fired mozzarella pizza", new BigDecimal("300"),
@@ -151,9 +151,9 @@ public class DataInitializer implements CommandLineRunner {
                 new BigDecimal("50000"), 4);
         deliveryUser = createStaff("Delivery Partner", "delivery@foodie.com", "password", Role.ROLE_DELIVERY,
                 new BigDecimal("25000"), 2);
-        sousChefUser = createStaff("Sous Chef", "souschef@foodie.com", "password", Role.ROLE_CHEF,
+        createStaff("Sous Chef", "souschef@foodie.com", "password", Role.ROLE_CHEF,
                 new BigDecimal("35000"), 1);
-        riderTwoUser = createStaff("Rider Two", "rider2@foodie.com", "password", Role.ROLE_DELIVERY,
+        createStaff("Rider Two", "rider2@foodie.com", "password", Role.ROLE_DELIVERY,
                 new BigDecimal("22000"), 0);
 
         customerHappy = createCustomer("Happy Customer", "customer@foodie.com", "password", "9876543210",

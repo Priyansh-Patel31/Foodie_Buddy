@@ -11,9 +11,9 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 
 // Customer Pages
 import HomePage from './pages/customer/HomePage';
-import RestaurantDetailPage from './pages/customer/RestaurantDetailPage';
 import CheckoutPage from './pages/customer/CheckoutPage';
 import OrderTrackingPage from './pages/customer/OrderTrackingPage';
+import MyOrdersPage from './pages/customer/MyOrdersPage';
 
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
@@ -54,9 +54,9 @@ function App() {
         {/* Public Customer Routes */}
         <Route path="/" element={<CustomerLayout />}>
           <Route index element={<HomePage />} />
-          <Route path="restaurant/:id" element={<RestaurantDetailPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
           <Route path="order-tracking/:id" element={<OrderTrackingPage />} />
+          <Route path="my-orders" element={<MyOrdersPage />} />
         </Route>
         
         {/* Auth Routes */}
@@ -75,6 +75,7 @@ function App() {
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/roster" element={<ManagerStaffPage />} />
           <Route path="/profile" element={<ProfileAttendancePage />} />
+          <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Manager Routes */}
@@ -87,6 +88,7 @@ function App() {
           <Route path="/manager/crm" element={<ManagerCRMPage />} />
           <Route path="/manager/reports" element={<ManagerReportsPage />} />
           <Route path="/profile" element={<ProfileAttendancePage />} />
+          <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Chef Route */}

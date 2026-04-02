@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   ClipboardList, CheckCircle2, Clock, ChefHat, Truck, MapPin, User,
   Star, AlertCircle, RefreshCw, X
 } from 'lucide-react';
-import { assignChefApi, assignDeliveryApi, updateOrderStatusApi, fetchAllOrders } from '../../features/admin/adminSlice';
+import { assignChefApi, assignDeliveryApi, fetchAllOrders } from '../../features/admin/adminSlice';
 import { OrderData } from '../../features/admin/adminSlice';
 import toast from 'react-hot-toast';
 
@@ -20,22 +20,60 @@ export default function ManagerOrdersPage() {
   const dispatch = useAppDispatch();
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
   const [assignModal, setAssignModal] = useState<AssignModal | null>(null);
+  
+  // Track previous count for push notifications
+  const prevOrderCountRef = useRef<number>(0);
+
+  // Audio Context (must be initialized after user interaction in some browsers, but fine for MVP)
+  const playNewOrderSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch(e) {}
+  };
 
   // Poll for order updates every 10 seconds (reflects chef/delivery status changes)
   useEffect(() => {
-    const interval = setInterval(() => {
-      dispatch(fetchAllOrders());
-    }, 10000);
+    const fetchOrders = async () => {
+      const action = await dispatch(fetchAllOrders());
+      if (fetchAllOrders.fulfilled.match(action)) {
+        const newCount = action.payload.length;
+        if (prevOrderCountRef.current !== 0 && newCount > prevOrderCountRef.current) {
+          // New order arrived!
+          playNewOrderSound();
+          toast.success('🔔 New Order Received!', { duration: 4000, style: { fontWeight: 'bold', fontSize: '16px' } });
+        }
+        prevOrderCountRef.current = newCount;
+      }
+    };
+    
+    // Initial fetch
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 10000);
     return () => clearInterval(interval);
   }, [dispatch]);
 
   const chefs = users.filter(u => u.role === 'ROLE_CHEF');
   const riders = users.filter(u => u.role === 'ROLE_DELIVERY');
 
-  // Count how many active orders each worker has
-  const getWorkerLoad = (userId: string) => {
+  // Count active orders per role — chefs only count chef assignments, riders only delivery
+  const getChefLoad = (userId: string) => {
     return orders.filter(o =>
-      (o.assignedChefId === userId || o.assignedDeliveryId === userId) &&
+      o.assignedChefId === userId &&
+      !['DELIVERED', 'CANCELLED'].includes(o.status)
+    ).length;
+  };
+  const getRiderLoad = (userId: string) => {
+    return orders.filter(o =>
+      o.assignedDeliveryId === userId &&
       !['DELIVERED', 'CANCELLED'].includes(o.status)
     ).length;
   };
@@ -44,7 +82,7 @@ export default function ManagerOrdersPage() {
   const completedOrders = orders.filter(o => o.status === 'DELIVERED');
 
   const needsChefOrders = activeOrders.filter(o =>
-    (o.status === 'PLACED' || o.status === 'CONFIRMED' || o.status === 'PENDING') && !o.assignedChefId
+    (o.status === 'PLACED' || o.status === 'CONFIRMED' || o.status === 'PENDING' || o.status === 'PREPARING') && !o.assignedChefId
   );
   const needsDeliveryOrders = activeOrders.filter(o => o.status === 'READY' && !o.assignedDeliveryId);
 
@@ -96,16 +134,20 @@ export default function ManagerOrdersPage() {
       dispatch(assignChefApi({ orderId: order.id, userId, userName: worker.name }))
         .unwrap()
         .then(() => {
-          toast.success(`👨‍🍳 ${worker.name} assigned as Chef for ${order.id}. Waiting for chef to accept.`);
-          // Order stays in PLACED — chef must accept from their dashboard to move to PREPARING
+          toast.success(`👨‍🍳 ${worker.name} assigned as Chef for ${order.id}.`);
+          // Order stays in current status — chef must accept from their dashboard
         })
         .catch(() => toast.success(`👨‍🍳 Locally assigned: ${worker.name} (Chef)`));
     } else {
       dispatch(assignDeliveryApi({ orderId: order.id, userId, userName: worker.name }))
         .unwrap()
         .then(() => {
-          toast.success(`🛵 ${worker.name} dispatched for ${order.id}`);
-          dispatch(updateOrderStatusApi({ id: order.id, status: 'OUT_FOR_DELIVERY' }));
+          // Don't auto-change status! Rider must accept from their dashboard.
+          if (order.status === 'READY') {
+            toast.success(`🛵 ${worker.name} dispatched for ${order.id}. Waiting for rider to pick up.`);
+          } else {
+            toast.success(`🛵 ${worker.name} pre-assigned as rider for ${order.id}. They'll see it when food is ready.`);
+          }
         })
         .catch(() => toast.success(`🛵 Locally assigned: ${worker.name} (Rider)`));
     }
@@ -173,7 +215,7 @@ export default function ManagerOrdersPage() {
           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><ChefHat size={14} /> Kitchen Team</p>
           <div className="space-y-2">
             {chefs.map(c => {
-              const load = getWorkerLoad(c.id);
+              const load = getChefLoad(c.id);
               return (
                 <div key={c.id} className="flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-700">{c.name}</span>
@@ -190,7 +232,7 @@ export default function ManagerOrdersPage() {
           <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Truck size={14} /> Delivery Team</p>
           <div className="space-y-2">
             {riders.map(r => {
-              const load = getWorkerLoad(r.id);
+              const load = getRiderLoad(r.id);
               return (
                 <div key={r.id} className="flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-700">{r.name}</span>
@@ -225,8 +267,12 @@ export default function ManagerOrdersPage() {
       {/* Orders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredOrders.map(order => {
-          const needsChef = (order.status === 'PLACED' || order.status === 'CONFIRMED' || order.status === 'PENDING') && !order.assignedChefId;
+          const needsChef = ['PLACED', 'CONFIRMED', 'PENDING', 'PREPARING'].includes(order.status) && !order.assignedChefId;
+          const canChangeChef = ['PLACED', 'CONFIRMED', 'PENDING', 'PREPARING'].includes(order.status);
           const needsRider = order.status === 'READY' && !order.assignedDeliveryId;
+          // Rider can be pre-assigned during PREPARING, assigned at READY, or changed during delivery
+          const canAssignRider = ['PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'PICKED_UP'].includes(order.status);
+          const canChangeRider = canAssignRider;
           return (
             <div
               key={order.id}
@@ -265,7 +311,7 @@ export default function ManagerOrdersPage() {
                   {order.assignedChefName ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-black text-gray-800">{order.assignedChefName}</span>
-                      {!['DELIVERED', 'CANCELLED'].includes(order.status) && (
+                      {canChangeChef && (
                         <button onClick={() => openAssign(order, 'chef')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
                           <RefreshCw size={11} />
                         </button>
@@ -292,7 +338,12 @@ export default function ManagerOrdersPage() {
                   {order.assignedDeliveryName ? (
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-black text-gray-800">{order.assignedDeliveryName}</span>
-                      {!['DELIVERED', 'CANCELLED'].includes(order.status) && (
+                      {!['PLACED', 'CONFIRMED', 'PENDING'].includes(order.status) && (
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600 border border-green-100">
+                          {order.status === 'PREPARING' ? 'Pre-assigned' : 'Assigned'}
+                        </span>
+                      )}
+                      {canChangeRider && (
                         <button onClick={() => openAssign(order, 'delivery')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
                           <RefreshCw size={11} />
                         </button>
@@ -305,6 +356,13 @@ export default function ManagerOrdersPage() {
                         className="text-[10px] font-black uppercase bg-blue-600/80 backdrop-blur-sm border border-white/10 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-blue-600 transition-all"
                       >
                         Dispatch!
+                      </button>
+                    ) : canAssignRider && !order.assignedDeliveryId ? (
+                      <button
+                        onClick={() => openAssign(order, 'delivery')}
+                        className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg hover:bg-blue-100 transition-all"
+                      >
+                        Pre-assign Rider
                       </button>
                     ) : (
                       <span className="text-[10px] text-gray-400">—</span>
@@ -355,7 +413,7 @@ export default function ManagerOrdersPage() {
             </div>
             <div className="space-y-3">
               {(assignModal.mode === 'chef' ? chefs : riders).map(worker => {
-                const load = getWorkerLoad(worker.id);
+                const load = assignModal.mode === 'chef' ? getChefLoad(worker.id) : getRiderLoad(worker.id);
                 const isCurrent = assignModal.mode === 'chef'
                   ? assignModal.order.assignedChefId === worker.id
                   : assignModal.order.assignedDeliveryId === worker.id;

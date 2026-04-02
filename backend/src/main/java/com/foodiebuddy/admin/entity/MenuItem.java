@@ -34,8 +34,14 @@ public class MenuItem {
     @Builder.Default
     private List<IngredientRequirement> ingredients = new ArrayList<>();
 
+    // Rating System Fields
+    private Double averageRating;
+    private Integer ratingCount;
+
     public void onCreate() {
         if (this.isAvailable == null) this.isAvailable = true;
         if (this.isVegetarian == null) this.isVegetarian = false;
+        if (this.ratingCount == null) this.ratingCount = 0;
+        if (this.averageRating == null) this.averageRating = 0.0;
     }
 }

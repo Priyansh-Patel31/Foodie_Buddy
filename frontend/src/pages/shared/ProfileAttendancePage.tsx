@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
-import { UserCircle, Calendar, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Mail, Briefcase } from 'lucide-react';
+import { UserCircle, Calendar, Clock, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Mail, Briefcase, ArrowLeft } from 'lucide-react';
 import { ROLE_LABELS } from '../../utils/constants';
 
 // Deterministic pseudo-random seeded by string
@@ -63,7 +64,15 @@ function generateAttendance(userId: string, date: Date): AttendanceRecord | null
 }
 
 export default function ProfileAttendancePage() {
-  const { user } = useAppSelector(state => state.auth);
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user: authUser } = useAppSelector(state => state.auth);
+  const { users } = useAppSelector(state => state.admin);
+
+  // If ID is provided, we're viewing someone else's profile (Staff deep-dive)
+  const targetUser = id ? users.find(u => u.id === id) : authUser;
+  const user = targetUser || authUser;
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -84,9 +93,9 @@ export default function ProfileAttendancePage() {
     return records;
   }, [user?.id, year, month, daysInMonth]);
 
-  const presentDays = monthAttendance.filter(r => r?.present).length;
-  const absentDays = monthAttendance.filter(r => r && !r.present).length;
-  const workingDays = monthAttendance.filter(r => r !== null).length;
+  const presentDays = monthAttendance.filter((r: AttendanceRecord | null) => r?.present).length;
+  const absentDays = monthAttendance.filter((r: AttendanceRecord | null) => r && !r.present).length;
+  const workingDays = monthAttendance.filter((r: AttendanceRecord | null) => r !== null).length;
 
   const selectedRecord = selectedDay
     ? generateAttendance(user?.id || '', selectedDay)
@@ -97,6 +106,22 @@ export default function ProfileAttendancePage() {
 
   return (
     <div className="space-y-8 animate-fade-in max-w-4xl mx-auto pb-20">
+      {/* Header with Back Button if viewing others */}
+      {id && (
+        <div className="flex items-center gap-4 mb-2">
+          <button 
+            onClick={() => navigate(-1)}
+            className="p-2.5 rounded-xl bg-white border border-gray-200 shadow-sm text-gray-500 hover:text-primary-600 transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Staff Attendance Log</h2>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Administrative Context: {targetUser?.name}</p>
+          </div>
+        </div>
+      )}
+
       {/* Profile Card */}
       <div className="glass rounded-3xl p-8 border border-white/60 shadow-xl bg-white/40">
         <div className="flex items-center gap-6">

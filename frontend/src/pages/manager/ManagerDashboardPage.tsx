@@ -25,7 +25,26 @@ export default function ManagerDashboardPage() {
   const activeOrders = orders.filter(o => o.status !== 'DELIVERED').length;
   const totalRevenue = orders.reduce((sum, o) => sum + o.charge, 0);
   const totalCustomers = users.filter(u => u.role === 'ROLE_CUSTOMER').length;
-  const totalStaff = users.filter(u => u.role !== 'ROLE_CUSTOMER' && u.role !== 'ROLE_ADMIN').length;
+  const staffMembers = users.filter(u => u.role !== 'ROLE_CUSTOMER' && u.role !== 'ROLE_ADMIN');
+  const totalStaff = staffMembers.length;
+
+  // Real-time attendance logic (matching Staff Roster seed)
+  const getOnDutyCount = () => {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    return staffMembers.filter(staff => {
+      let hash = 0;
+      const str = staff.id + dateStr;
+      for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash) + str.charCodeAt(i);
+          hash |= 0;
+      }
+      const seed = Math.abs(hash);
+      return seed % 3 !== 0; // "On Duty" logic from roster
+    }).length;
+  };
+  const onDutyCount = getOnDutyCount();
+  const onLeaveCount = staffMembers.filter(s => s.leavesTaken > 2).length; // High-level "issue" count
 
   const modules: ModuleCard[] = [
     {
@@ -142,17 +161,18 @@ export default function ManagerDashboardPage() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Customers</p>
               <p className="text-2xl font-black text-gray-900">{totalCustomers}</p>
+              {onLeaveCount > 0 && <p className="text-[10px] text-red-500 font-bold mt-1 tracking-tight">{onLeaveCount} on leave</p>}
             </div>
           </div>
         </div>
         <div className="glass rounded-2xl p-5 border border-white/60 shadow-lg bg-white/40">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <TrendingUp className="text-purple-600" size={20} />
+              <Users className="text-purple-600" size={20} />
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Staff On Duty</p>
-              <p className="text-2xl font-black text-gray-900">{totalStaff}</p>
+              <p className="text-2xl font-black text-gray-900">{onDutyCount}/{totalStaff}</p>
             </div>
           </div>
         </div>

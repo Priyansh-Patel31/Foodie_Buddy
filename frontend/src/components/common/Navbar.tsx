@@ -3,12 +3,17 @@ import { ShoppingCart, User, Search, Menu, MapPin, ChevronDown, LogOut } from 'l
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { openCart } from '../../features/cart/cartSlice';
 import { logout } from '../../features/auth/authSlice';
+import { clearAdminData } from '../../features/admin/adminSlice';
 import AnimatedLogo from './AnimatedLogo';
 
 export default function Navbar() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAppSelector(state => state.auth);
+  const { orders } = useAppSelector(state => state.admin);
+  const activeOrderCount = orders.filter(o => 
+    (!user?.id || o.customerId === user?.id) && !['DELIVERED', 'CANCELLED'].includes(o.status)
+  ).length;
   const cartItemsCount = useAppSelector(state => 
     state.cart.items.reduce((total, item) => total + item.quantity, 0)
   );
@@ -16,6 +21,7 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem('foodieBuddyToken');
     localStorage.removeItem('foodieBuddyAuth');
+    dispatch(clearAdminData());
     dispatch(logout());
     navigate('/');
   };
@@ -71,7 +77,19 @@ export default function Navbar() {
           {isAuthenticated && user ? (
             /* Authenticated User: Show name + Sign Out */
             <div className="hidden sm:flex items-center gap-2 bg-gray-100/50 p-1 rounded-full border border-gray-200">
-              <div className="flex items-center gap-2 p-1.5 px-3">
+              <button
+                onClick={() => navigate('/my-orders')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition-all text-sm font-bold shadow-sm"
+              >
+                My Orders
+                {activeOrderCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[10px] flex items-center justify-center">
+                    {activeOrderCount}
+                  </span>
+                )}
+              </button>
+              
+              <div className="flex items-center gap-2 p-1.5 px-3 border-l border-gray-200">
                 <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-orange-400 rounded-full flex items-center justify-center text-white font-black text-xs shadow-sm">
                   {user.name?.charAt(0) || 'U'}
                 </div>

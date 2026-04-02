@@ -171,7 +171,7 @@ export default function ChefDashboardPage() {
                     NEW
                   </span>
                 </div>
-                <div className="p-5 flex-grow space-y-3">
+              <div className="p-5 flex-grow space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <User size={14} className="text-gray-400" />
                     <span className="font-bold text-gray-800">{order.customerName}</span>
@@ -180,9 +180,36 @@ export default function ChefDashboardPage() {
                     <MapPin size={14} className="text-red-400" />
                     <span className="font-medium text-gray-500 truncate">{order.deliveryAddress}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <IndianRupee size={14} className="text-emerald-500" />
-                    <span className="font-black text-gray-800">₹{order.charge}</span>
+
+                  {/* Order Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2 text-xs font-black text-gray-400 uppercase tracking-widest">
+                        <Utensils size={12} /> Items to Prepare
+                      </div>
+                      <div className="space-y-1.5">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-orange-100 text-orange-700 font-black px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>
+                              <span className="font-bold text-gray-800">{item.menuItemName}</span>
+                            </div>
+                            <span className="text-xs font-bold text-gray-400">₹{item.totalPrice}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <IndianRupee size={14} className="text-emerald-500" />
+                      <span className="font-black text-gray-800">₹{order.totalAmount ?? order.charge}</span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-bold">
+                      {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </div>
                 <div className="p-4 border-t border-yellow-100">
@@ -224,12 +251,27 @@ export default function ChefDashboardPage() {
                     <User size={14} className="text-gray-400" />
                     <span className="font-bold text-gray-800">{order.customerName}</span>
                   </div>
-                  <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100">
-                    <div className="flex items-center gap-2 mb-2 text-xs font-black text-gray-400 uppercase tracking-widest">
-                      <Utensils size={12} /> Kitchen Instructions
+
+                  {/* Order Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2 text-xs font-black text-gray-400 uppercase tracking-widest">
+                        <Utensils size={12} /> Cooking Checklist
+                      </div>
+                      <div className="space-y-1.5">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-orange-100 text-orange-700 font-black px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>
+                              <span className="font-bold text-gray-800">{item.menuItemName}</span>
+                            </div>
+                            <span className="text-xs font-bold text-gray-400">₹{item.totalPrice}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-sm font-medium text-gray-600">Prepare all items for immediate delivery.</p>
-                  </div>
+                  )}
+
                   <div className="flex items-center gap-2 text-xs text-gray-400">
                     <Clock size={12} />
                     <span className="font-bold">

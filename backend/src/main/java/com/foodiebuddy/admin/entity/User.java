@@ -39,9 +39,15 @@ public class User {
     private java.math.BigDecimal baseSalary;
     private Integer leavesTakenThisMonth;
 
+    // Rating System Fields
+    private Double averageRating;
+    private Integer ratingCount;
+
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) this.status = UserStatus.ACTIVE;
         if (this.role == null) this.role = Role.ROLE_CUSTOMER;
+        if (this.ratingCount == null) this.ratingCount = 0;
+        if (this.averageRating == null) this.averageRating = 0.0;
     }
 }

@@ -30,6 +30,19 @@ export interface OrderData {
   manager: string;
   date: string;
   orderRating?: number;
+  isRated?: boolean;
+  deliveryRating?: number;
+  foodRating?: number;
+  subtotal?: number;
+  deliveryFee?: number;
+  totalAmount?: number;
+  items?: {
+    menuItemId: string;
+    menuItemName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }[];
 }
 
 export interface UserData {
@@ -40,7 +53,8 @@ export interface UserData {
   baseSalary: number;
   leavesTaken: number;
   totalSpent?: number;
-  customerRating?: number;
+  averageRating?: number;
+  ratingCount?: number;
   customerReview?: string;
   deliveryReview?: string;
 }
@@ -58,7 +72,7 @@ export interface TransactionData {
 // When the backend IS running, DataInitializer.java seeds this same data into MongoDB permanently.
 
 const FALLBACK_MENU: MenuItem[] = [
-  { id: 'm1', name: 'Truffle Pasta', price: 450, category: 'Main Course', categoryName: 'Main Course', description: 'Creamy black truffle pasta with parmesan.', imageUrl: 'https://images.unsplash.com/photo-1621996316514-14ebd679f291?w=800&auto=format&fit=crop&q=80', isAvailable: true, isVegetarian: true, toppings: [] },
+  { id: 'm1', name: 'Truffle Pasta', price: 450, category: 'Main Course', categoryName: 'Main Course', description: 'Creamy black truffle pasta with parmesan.', imageUrl: 'https://images.unsplash.com/photo-1556761223-4c4282c73f77?w=800&auto=format&fit=crop&q=80', isAvailable: true, isVegetarian: true, toppings: [] },
   { id: 'm2', name: 'Margherita Pizza', price: 300, category: 'Main Course', categoryName: 'Main Course', description: 'Classic stone-fired mozzarella pizza.', imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&auto=format&fit=crop&q=80', isAvailable: true, isVegetarian: true, toppings: [] },
   { id: 'm3', name: 'Garlic Bread', price: 150, category: 'Breads', categoryName: 'Breads', description: 'Roasted garlic butter bread sticks.', imageUrl: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=800&auto=format&fit=crop&q=80', isAvailable: true, isVegetarian: true, toppings: [] },
   { id: 'm4', name: 'Butter Chicken', price: 380, category: 'Main Course', categoryName: 'Main Course', description: 'Rich tomato-based curry with tender chicken.', imageUrl: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=800&auto=format&fit=crop&q=80', isAvailable: true, isVegetarian: false, toppings: [] },
@@ -92,12 +106,12 @@ const FALLBACK_USERS: UserData[] = [
   { id: '4', name: 'Delivery Partner', email: 'delivery@foodie.com', role: 'ROLE_DELIVERY', baseSalary: 25000, leavesTaken: 2 },
   { id: '5', name: 'Sous Chef', email: 'souschef@foodie.com', role: 'ROLE_CHEF', baseSalary: 35000, leavesTaken: 1 },
   { id: '6', name: 'Rider Two', email: 'rider2@foodie.com', role: 'ROLE_DELIVERY', baseSalary: 22000, leavesTaken: 0 },
-  { id: 'U1', name: 'Happy Customer', email: 'customer@foodie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 2450, customerRating: 4.8, customerReview: 'Amazing food, incredibly fast delivery!', deliveryReview: 'Very polite customer.' },
-  { id: 'U2', name: 'Alice Smith', email: 'alice@foodie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 900, customerRating: 3.5, customerReview: 'Food was slightly cold but tasted great.', deliveryReview: 'Took 10 minutes to answer.' },
-  { id: 'U3', name: 'Tom Hanks', email: 'tom@movie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 3090, customerRating: 5.0, customerReview: 'Perfect catering for my office party.', deliveryReview: 'Gave a generous ₹500 tip.' },
-  { id: 'U4', name: 'Priya Sharma', email: 'priya@gmail.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 1460, customerRating: 4.5, customerReview: 'The butter chicken is to die for!', deliveryReview: 'Easy drop-off.' },
-  { id: 'U5', name: 'Raj Patel', email: 'raj@outlook.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 2010, customerRating: 4.0, customerReview: 'Great variety on the menu!', deliveryReview: 'Always orders in bulk.' },
-  { id: 'U6', name: 'Sneha Iyer', email: 'sneha@yahoo.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 4000, customerRating: 4.9, customerReview: 'I order almost every weekend!', deliveryReview: 'VIP customer.' },
+  { id: 'U1', name: 'Happy Customer', email: 'customer@foodie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 2450, averageRating: 4.8, ratingCount: 15, customerReview: 'Amazing food, incredibly fast delivery!', deliveryReview: 'Very polite customer.' },
+  { id: 'U2', name: 'Alice Smith', email: 'alice@foodie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 900, averageRating: 3.5, ratingCount: 4, customerReview: 'Food was slightly cold but tasted great.', deliveryReview: 'Took 10 minutes to answer.' },
+  { id: 'U3', name: 'Tom Hanks', email: 'tom@movie.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 3090, averageRating: 5.0, ratingCount: 22, customerReview: 'Perfect catering for my office party.', deliveryReview: 'Gave a generous ₹500 tip.' },
+  { id: 'U4', name: 'Priya Sharma', email: 'priya@gmail.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 1460, averageRating: 4.5, ratingCount: 8, customerReview: 'The butter chicken is to die for!', deliveryReview: 'Easy drop-off.' },
+  { id: 'U5', name: 'Raj Patel', email: 'raj@outlook.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 2010, averageRating: 4.0, ratingCount: 12, customerReview: 'Great variety on the menu!', deliveryReview: 'Always orders in bulk.' },
+  { id: 'U6', name: 'Sneha Iyer', email: 'sneha@yahoo.com', role: 'ROLE_CUSTOMER', baseSalary: 0, leavesTaken: 0, totalSpent: 4000, averageRating: 4.9, ratingCount: 40, customerReview: 'I order almost every weekend!', deliveryReview: 'VIP customer.' },
 ];
 
 const FALLBACK_TRANSACTIONS: TransactionData[] = [
@@ -121,22 +135,41 @@ const FALLBACK_TRANSACTIONS: TransactionData[] = [
 
 // ========================== ASYNC THUNKS ==========================
 
-export const fetchAllMenu = createAsyncThunk('admin/fetchMenu', async () => {
-  const res = await apiClient.get('/admin/menu');
+export const fetchAllMenu = createAsyncThunk('admin/fetchMenu', async (_, { getState }) => {
+  const state = getState() as any;
+  const role = state.auth.user?.role;
+  const isStaff = role === 'ROLE_ADMIN' || role === 'ROLE_MANAGER';
+  const res = await apiClient.get(isStaff ? '/admin/menu' : '/menu');
   return res.data.data || res.data;
 });
 
-export const fetchAllOrders = createAsyncThunk('admin/fetchOrders', async () => {
-  const res = await apiClient.get('/admin/orders');
+export const fetchAllOrders = createAsyncThunk('admin/fetchOrders', async (_, { getState }) => {
+  const state = getState() as any;
+  const role = state.auth.user?.role;
+  if (!role && localStorage.getItem('foodieBuddyToken')) {
+     // Still loading auth, wait
+     throw new Error('Auth not loaded');
+  }
+  let endpoint = '/admin/orders'; // default for ADMIN / MANAGER
+  if (role === 'ROLE_CUSTOMER') endpoint = '/orders/my';
+  else if (role === 'ROLE_CHEF') endpoint = '/kitchen/my-orders';
+  else if (role === 'ROLE_DELIVERY') endpoint = '/delivery/my-orders';
+  const res = await apiClient.get(endpoint);
   return res.data.data || res.data;
 });
 
-export const fetchAllUsers = createAsyncThunk('admin/fetchUsers', async () => {
+export const fetchAllUsers = createAsyncThunk('admin/fetchUsers', async (_, { getState }) => {
+  const state = getState() as any;
+  const role = state.auth.user?.role;
+  if (role === 'ROLE_CUSTOMER' || role === 'ROLE_DELIVERY' || role === 'ROLE_CHEF') return []; // Only admin/manager need all users
   const res = await apiClient.get('/admin/users');
   return res.data.data || res.data;
 });
 
-export const fetchTransactions = createAsyncThunk('admin/fetchTransactions', async () => {
+export const fetchTransactions = createAsyncThunk('admin/fetchTransactions', async (_, { getState }) => {
+  const state = getState() as any;
+  const role = state.auth.user?.role;
+  if (role !== 'ROLE_ADMIN' && role !== 'ROLE_MANAGER') return []; // Only admin/manager see financials
   const res = await apiClient.get('/admin/financials/transactions');
   return res.data.data || res.data;
 });
@@ -305,6 +338,52 @@ export const updateOrderStatusApi = createAsyncThunk('admin/updateOrderStatus', 
   }
 });
 
+export const placeOrderApi = createAsyncThunk('admin/placeOrder', async (orderData: any) => {
+  try {
+    const res = await apiClient.post('/orders/place', orderData);
+    return res.data.data || res.data;
+  } catch {
+    // Fallback if backend is down
+    const mockOrder = {
+      id: `ORD-${Date.now().toString().slice(-4)}`,
+      customerId: orderData.customerPhone || 'U1',
+      customerName: 'Guest User',
+      status: 'PLACED',
+      charge: orderData.items?.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0) + 40,
+      profit: 100,
+      deliveryAddress: orderData.customerAddress,
+      assignedChefId: '',
+      assignedChefName: '',
+      assignedDeliveryId: '',
+      assignedDeliveryName: '',
+      manager: '',
+      date: new Date().toISOString()
+    };
+    return mockOrder;
+  }
+});
+
+export const rateOrderApi = createAsyncThunk('admin/rateOrder', async ({ orderId, deliveryRating, foodRating }: { orderId: string, deliveryRating: number, foodRating: number }, { getState }) => {
+  try {
+    const res = await apiClient.post(`/orders/${orderId}/rate`, { deliveryRating, foodRating });
+    return res.data.data || res.data;
+  } catch {
+    // Fallback if backend is down
+    const state = getState() as any;
+    const order = state.admin.orders.find((o: any) => o.id === orderId);
+    if (order) {
+      return { 
+        ...order, 
+        isRated: true, 
+        deliveryRating, 
+        foodRating,
+        orderRating: Math.round((deliveryRating + foodRating) / 2)
+      };
+    }
+    throw new Error('Order not found');
+  }
+});
+
 // ========================== MAPPERS ==========================
 function mapMenuItem(raw: any): MenuItem {
   return {
@@ -337,6 +416,13 @@ function mapOrder(raw: any): OrderData {
     manager: raw.managingManagerName || raw.manager || '',
     date: raw.createdAt || raw.date || new Date().toISOString(),
     orderRating: raw.orderRating,
+    isRated: raw.isRated || false,
+    deliveryRating: raw.deliveryRating,
+    foodRating: raw.foodRating,
+    items: raw.items || [],
+    subtotal: raw.subtotal,
+    deliveryFee: raw.deliveryFee,
+    totalAmount: raw.totalAmount,
   };
 }
 
@@ -349,7 +435,8 @@ function mapUser(raw: any): UserData {
     baseSalary: Number(raw.baseSalary || 0),
     leavesTaken: raw.leavesTakenThisMonth ?? raw.leavesTaken ?? 0,
     totalSpent: raw.totalSpent,
-    customerRating: raw.customerRating,
+    averageRating: raw.averageRating,
+    ratingCount: raw.ratingCount,
     customerReview: raw.customerReview,
     deliveryReview: raw.deliveryReview,
   };
@@ -413,8 +500,8 @@ export const adminSlice = createSlice({
   extraReducers: (builder) => {
     // ===== fetchAdminData (combined) =====
     builder.addCase(fetchAdminData.fulfilled, (state, action) => {
-      if (action.payload === 'FALLBACK' && state.dataSource === 'none') {
-        // Backend is down — load all fallback data
+      if (action.payload === 'FALLBACK') {
+        // Backend is down — load fallback data
         state.menuItems = FALLBACK_MENU;
         state.orders = FALLBACK_ORDERS;
         state.users = FALLBACK_USERS;
@@ -517,6 +604,16 @@ export const adminSlice = createSlice({
     });
 
     builder.addCase(updateOrderStatusApi.fulfilled, (state, action) => {
+      const mapped = mapOrder(action.payload);
+      const idx = state.orders.findIndex(o => o.id === mapped.id);
+      if (idx !== -1) state.orders[idx] = mapped;
+    });
+
+    builder.addCase(placeOrderApi.fulfilled, (state, action) => {
+      state.orders.unshift(mapOrder(action.payload));
+    });
+
+    builder.addCase(rateOrderApi.fulfilled, (state, action) => {
       const mapped = mapOrder(action.payload);
       const idx = state.orders.findIndex(o => o.id === mapped.id);
       if (idx !== -1) state.orders[idx] = mapped;

@@ -1,7 +1,7 @@
 package com.foodiebuddy.admin.controller;
 
 import com.foodiebuddy.admin.dto.*;
-import com.foodiebuddy.admin.entity.enums.OrderStatus;
+
 import com.foodiebuddy.admin.security.JwtTokenProvider;
 import com.foodiebuddy.admin.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,6 +42,14 @@ public class OrderController {
     @Operation(summary = "Get specific order (Customer)")
     public ResponseEntity<ApiResponse<OrderDTO>> getMyOrder(@PathVariable String orderId) {
         return ResponseEntity.ok(ApiResponse.success(orderService.getById(orderId)));
+    }
+
+    @PostMapping("/{orderId}/rate")
+    @Operation(summary = "Rate a delivered order (Customer)")
+    public ResponseEntity<ApiResponse<OrderDTO>> rateOrder(
+            @PathVariable String orderId,
+            @RequestBody RatingRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.rateOrder(orderId, request)));
     }
 
     private String extractUserId(HttpServletRequest request) {

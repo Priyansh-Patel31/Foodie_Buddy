@@ -1,20 +1,30 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
-import { CalendarDays, Clock, CheckCircle, XCircle, User } from 'lucide-react';
+import { CalendarDays, Clock, CheckCircle, XCircle, User, Edit2, CheckCircle2, Calendar } from 'lucide-react';
+import { updateLeavesApi } from '../../features/admin/adminSlice';
+import toast from 'react-hot-toast';
+import { useAppDispatch } from '../../store/hooks';
 
 interface ShiftEntry {
   id: string;
   name: string;
   role: string;
   shift: string;
+  leaves: number;
   status: 'On Duty' | 'Off Duty' | 'On Leave';
   checkIn: string;
   checkOut: string;
 }
 
 export default function ManagerStaffPage() {
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { users } = useAppSelector(state => state.admin);
   const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLeaves, setEditLeaves] = useState<number>(0);
 
   const staffMembers = users.filter(u => u.role !== 'ROLE_CUSTOMER' && u.role !== 'ROLE_ADMIN');
 
@@ -38,6 +48,7 @@ export default function ManagerStaffPage() {
     return {
       id: staff.id,
       name: staff.name,
+      leaves: staff.leavesTaken || 0,
       role: staff.role.replace('ROLE_', ''),
       shift: seed % 2 === 0 ? 'Morning (6AM - 2PM)' : 'Evening (2PM - 10PM)',
       status: isOnLeave ? 'On Leave' : (isOnDuty ? 'On Duty' : 'Off Duty'),
@@ -45,6 +56,12 @@ export default function ManagerStaffPage() {
       checkOut: !isOnDuty ? '--' : seed % 2 === 0 ? '02:15 PM' : '10:05 PM',
     };
   });
+
+  const handleSaveLeaves = (id: string) => {
+    dispatch(updateLeavesApi({ id, leavesTaken: editLeaves }));
+    setEditingId(null);
+    toast.success('Attendance records: Leave count updated.');
+  };
 
   const onDutyCount = shifts.filter(s => s.status === 'On Duty').length;
   const onLeaveCount = shifts.filter(s => s.status === 'On Leave').length;
@@ -190,9 +207,8 @@ export default function ManagerStaffPage() {
                 <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider">Staff Member</th>
                 <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider">Role</th>
                 <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider">Shift</th>
-                <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider">Check In</th>
-                <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider">Check Out</th>
-                <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right">Status</th>
+                <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider text-center">Leaves</th>
+                <th className="p-4 text-xs font-black text-gray-400 uppercase tracking-wider text-right">Today's Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100/50">
@@ -200,10 +216,19 @@ export default function ManagerStaffPage() {
                 <tr key={shift.id} className="hover:bg-white/40 transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-orange-400 rounded-full flex items-center justify-center text-white font-black text-sm">
+                      <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-orange-400 rounded-full flex items-center justify-center text-white font-black text-sm relative group cursor-pointer" onClick={() => navigate(`/profile/${shift.id}`)}>
                         {shift.name.charAt(0)}
+                        <div className="absolute -inset-1 border-2 border-primary-400 rounded-full scale-0 group-hover:scale-100 transition-transform opacity-0 group-hover:opacity-100"></div>
                       </div>
-                      <span className="font-bold text-gray-800">{shift.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-800 flex items-center gap-1.5">
+                          {shift.name}
+                          <button onClick={() => navigate(`/profile/${shift.id}`)} title="View Attendance Log">
+                            <Calendar size={12} className="text-primary-400 hover:text-primary-600 cursor-pointer" />
+                          </button>
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-mono">ID: {shift.id}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="p-4">
@@ -211,13 +236,43 @@ export default function ManagerStaffPage() {
                       {shift.role}
                     </span>
                   </td>
-                  <td className="p-4 font-medium text-gray-600 text-sm">{shift.shift}</td>
-                  <td className="p-4 font-bold text-gray-700 text-sm">{shift.checkIn}</td>
-                  <td className="p-4 font-bold text-gray-700 text-sm">{shift.checkOut}</td>
+                  <td className="p-4 font-medium text-gray-600 text-sm whitespace-nowrap">{shift.shift}</td>
+                  <td className="p-4 text-center">
+                    {editingId === shift.id ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <input 
+                          type="number" 
+                          value={editLeaves} 
+                          onChange={e => setEditLeaves(Number(e.target.value))}
+                          className="w-10 p-1 text-center font-black text-gray-800 bg-white border border-primary-300 rounded-lg outline-none"
+                        />
+                        <button onClick={() => handleSaveLeaves(shift.id)} className="text-emerald-500">
+                          <CheckCircle2 size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="group/edit inline-flex items-center gap-2">
+                        <span className={`text-sm font-black ${shift.leaves > 2 ? 'text-red-500' : 'text-gray-700'}`}>{shift.leaves}</span>
+                        <button 
+                          onClick={() => { setEditingId(shift.id); setEditLeaves(shift.leaves); }}
+                          className="opacity-0 group-hover/edit:opacity-100 transition-all text-gray-400 hover:text-primary-500"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td className="p-4 text-right">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border ${getStatusBadge(shift.status)}`}>
-                      {getStatusIcon(shift.status)} {shift.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border ${getStatusBadge(shift.status)}`}>
+                        {getStatusIcon(shift.status)} {shift.status}
+                      </span>
+                      {shift.status !== 'Off Duty' && shift.status !== 'On Leave' && (
+                        <span className="text-[9px] font-bold text-gray-400">
+                          {shift.checkIn} - {shift.checkOut}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

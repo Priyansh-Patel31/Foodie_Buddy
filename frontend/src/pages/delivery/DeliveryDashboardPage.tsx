@@ -7,9 +7,11 @@ import OrderDetailModal from '../../components/common/OrderDetailModal';
 import toast from 'react-hot-toast';
 
 export default function DeliveryDashboardPage() {
-  const { orders } = useAppSelector(state => state.admin);
-  const { user } = useAppSelector(state => state.auth);
+  const { orders, users } = useAppSelector(state => state.admin);
+  const { user: authUser } = useAppSelector(state => state.auth);
   const dispatch = useAppDispatch();
+  
+  const user = users.find(u => u.id === authUser?.id) || authUser;
 
   // Poll for new orders every 10 seconds (reflects manager/chef updates in real-time)
   useEffect(() => {
@@ -91,7 +93,14 @@ export default function DeliveryDashboardPage() {
           <h1 className="text-3xl font-black text-gray-900 font-outfit flex items-center gap-3">
             <Truck className="text-emerald-600" size={32} /> Delivery Hub
           </h1>
-          <p className="text-gray-500 font-medium mt-1">Welcome, {user?.name}. Your active delivery queue is below.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-1">
+            <p className="text-gray-500 font-medium">Welcome, {user?.name}.</p>
+            {user && 'averageRating' in user && user.averageRating ? (
+              <span className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200 w-fit">
+                ⭐ {user.averageRating.toFixed(1)} Rating ({user.ratingCount || 0} Reviews)
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {/* Notification Bell */}
@@ -193,6 +202,25 @@ export default function DeliveryDashboardPage() {
                     </div>
                   </div>
 
+                  {/* Order Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                        <Package size={11} /> Package Contents
+                      </p>
+                      <div className="space-y-1.5">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-blue-100 text-blue-700 font-black px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>
+                              <span className="font-bold text-gray-800">{item.menuItemName}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Utility Buttons */}
                   <div className="flex gap-2">
                     <button
@@ -210,17 +238,26 @@ export default function DeliveryDashboardPage() {
                   </div>
 
                   {/* Order Value */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-black text-emerald-600">₹{order.charge}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">Cash on Delivery</p>
+                  <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100 space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Item Total</span>
+                      <span>₹{order.subtotal ?? order.charge}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <Clock size={12} />
-                      <span className="font-bold">
-                        {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Delivery Fee</span>
+                      <span>₹{order.deliveryFee ?? 0}</span>
                     </div>
+                    <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200 pt-1.5">
+                      <span>Collect</span>
+                      <span className="text-emerald-600">₹{order.totalAmount ?? order.charge}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Clock size={12} />
+                    <span className="font-bold">
+                      {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
                 </div>
 
@@ -279,8 +316,42 @@ export default function DeliveryDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <p className="text-lg font-black text-emerald-600">₹{order.charge}</p>
+                  {/* Order Items */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                        <Package size={11} /> Package Contents
+                      </p>
+                      <div className="space-y-1.5">
+                        {order.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="bg-purple-100 text-purple-700 font-black px-1.5 py-0.5 rounded text-[10px]">{item.quantity}x</span>
+                              <span className="font-bold text-gray-800">{item.menuItemName}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment */}
+                  <div className="bg-gray-50/80 rounded-2xl p-3 border border-gray-100 space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Item Total</span>
+                      <span>₹{order.subtotal ?? order.charge}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>Delivery Fee</span>
+                      <span>₹{order.deliveryFee ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-black text-gray-900 border-t border-gray-200 pt-1.5">
+                      <span>Collect from Customer</span>
+                      <span className="text-emerald-600">₹{order.totalAmount ?? order.charge}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end">
                     <button
                       onClick={e => { e.stopPropagation(); handleConfirmDelivery(order.id); }}
                       className="bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all shadow-lg flex items-center gap-2"

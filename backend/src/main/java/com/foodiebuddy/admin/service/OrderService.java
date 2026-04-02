@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,9 +108,11 @@ public class OrderService {
         order.setStatus(newStatus);
 
         switch (newStatus) {
+            case PLACED -> {}
             case CONFIRMED -> order.setConfirmedAt(LocalDateTime.now());
             case PREPARING -> order.setPreparingAt(LocalDateTime.now());
             case READY -> order.setReadyAt(LocalDateTime.now());
+            case OUT_FOR_DELIVERY -> {}
             case PICKED_UP -> order.setPickedUpAt(LocalDateTime.now());
             case DELIVERED -> order.setDeliveredAt(LocalDateTime.now());
             case CANCELLED -> order.setCancelledAt(LocalDateTime.now());
@@ -143,6 +145,46 @@ public class OrderService {
         return toDTO(saved);
     }
 
+    public OrderDTO rateOrder(String orderId, com.foodiebuddy.admin.dto.RatingRequest request) {
+        Order order = findById(orderId);
+        if (Boolean.TRUE.equals(order.getIsRated())) {
+            throw new BadRequestException("Order is already rated");
+        }
+
+        order.setIsRated(true);
+        order.setDeliveryRating(request.getDeliveryRating());
+        order.setFoodRating(request.getFoodRating());
+
+        // Update driver rating
+        if (order.getAssignedDeliveryUserId() != null && request.getDeliveryRating() != null) {
+            userRepository.findById(order.getAssignedDeliveryUserId()).ifPresent(driver -> {
+                int count = driver.getRatingCount() != null ? driver.getRatingCount() : 0;
+                double currentAvg = driver.getAverageRating() != null ? driver.getAverageRating() : 0.0;
+                double newAvg = ((currentAvg * count) + request.getDeliveryRating()) / (count + 1);
+                driver.setAverageRating(Math.round(newAvg * 10.0) / 10.0);
+                driver.setRatingCount(count + 1);
+                userRepository.save(driver);
+            });
+        }
+
+        // Update food rating
+        if (order.getItems() != null && request.getFoodRating() != null) {
+            for (OrderItem item : order.getItems()) {
+                menuItemRepository.findById(item.getMenuItemId()).ifPresent(menuItem -> {
+                    int count = menuItem.getRatingCount() != null ? menuItem.getRatingCount() : 0;
+                    double currentAvg = menuItem.getAverageRating() != null ? menuItem.getAverageRating() : 0.0;
+                    double newAvg = ((currentAvg * count) + request.getFoodRating()) / (count + 1);
+                    menuItem.setAverageRating(Math.round(newAvg * 10.0) / 10.0);
+                    menuItem.setRatingCount(count + 1);
+                    menuItemRepository.save(menuItem);
+                });
+            }
+        }
+
+        Order saved = orderRepository.save(order);
+        return toDTO(saved);
+    }
+
     public List<OrderDTO> getByCustomer(String customerId) {
         return orderRepository.findByCustomerId(customerId).stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -160,13 +202,20 @@ public class OrderService {
     }
 
     public List<OrderDTO> getKitchenOrders() {
-        List<OrderStatus> kitchenStatuses = List.of(OrderStatus.CONFIRMED, OrderStatus.PREPARING);
+        List<OrderStatus> kitchenStatuses = List.of(OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING);
         return orderRepository.findByStatusIn(kitchenStatuses).stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    public List<OrderDTO> getKitchenOrdersForChef(String chefId) {
+        List<OrderStatus> kitchenStatuses = List.of(OrderStatus.PLACED, OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.READY);
+        return orderRepository.findByStatusIn(kitchenStatuses).stream()
+                .filter(o -> chefId.equals(o.getAssignedChefId()))
+                .map(this::toDTO).collect(Collectors.toList());
     }
 
     public List<OrderDTO> getDeliveryOrders(String deliveryUserId) {
         return orderRepository.findByAssignedDeliveryUserId(deliveryUserId).stream()
-                .filter(o -> o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.OUT_FOR_DELIVERY)
+                .filter(o -> o.getStatus() == OrderStatus.READY || o.getStatus() == OrderStatus.PICKED_UP || o.getStatus() == OrderStatus.OUT_FOR_DELIVERY)
                 .map(this::toDTO).collect(Collectors.toList());
     }
 
@@ -210,6 +259,9 @@ public class OrderService {
                 .customerCharge(o.getCustomerCharge())
                 .calculatedProfit(o.getCalculatedProfit())
                 .createdAt(o.getCreatedAt())
+                .isRated(o.getIsRated())
+                .deliveryRating(o.getDeliveryRating())
+                .foodRating(o.getFoodRating())
                 .items(itemDTOs)
                 .build();
     }

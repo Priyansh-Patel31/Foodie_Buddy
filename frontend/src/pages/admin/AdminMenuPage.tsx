@@ -13,7 +13,7 @@ export default function AdminMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeDishId, setActiveDishId] = useState<string | null>(null);
 
-  const [dishData, setDishData] = useState({ name: '', price: '', category: '', description: '', imageUrl: '' });
+  const [dishData, setDishData] = useState({ name: '', price: '', category: '', description: '', imageUrl: '', isVegetarian: true });
   
   const handleToggle = (item: any) => {
     dispatch(toggleMenuItemApi(item.id));
@@ -38,7 +38,8 @@ export default function AdminMenuPage() {
        price: item.price ? item.price.toString() : '',
        category: item.category || '',
        description: item.description || '',
-       imageUrl: item.imageUrl || ''
+       imageUrl: item.imageUrl || '',
+       isVegetarian: item.isVegetarian ?? true
     });
     
     // Safely map toppings whether they come from old dummy data or new backend ingredients
@@ -56,7 +57,7 @@ export default function AdminMenuPage() {
     setShowAdd(false);
     setIsEditing(false);
     setActiveDishId(null);
-    setDishData({ name: '', price: '', category: '', description: '', imageUrl: '' });
+    setDishData({ name: '', price: '', category: '', description: '', imageUrl: '', isVegetarian: true });
     setToppings([]);
   };
 
@@ -71,7 +72,7 @@ export default function AdminMenuPage() {
       description: dishData.description || '',
       imageUrl: dishData.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
       isAvailable: true,
-      isVegetarian: false,
+      isVegetarian: dishData.isVegetarian,
       ingredients: toppings.map(t => ({ 
         inventoryItemName: t.name, 
         quantityRequired: Number(t.price) || 0 
@@ -125,6 +126,13 @@ export default function AdminMenuPage() {
                 <input type="text" value={dishData.category} onChange={e => setDishData({...dishData, category: e.target.value})} className="w-full mt-1 p-2.5 rounded-xl bg-white/50 border border-white/60 focus:ring-2 focus:ring-primary-500 outline-none font-bold" placeholder="e.g. Breakfast" />
               </div>
               <div>
+                <label className="text-xs font-bold text-gray-500 uppercase">Dietary Pref</label>
+                <div className="flex gap-2 mt-1">
+                  <button type="button" onClick={() => setDishData({...dishData, isVegetarian: true})} className={`flex-1 py-1.5 rounded-xl text-sm font-bold border transition-colors ${dishData.isVegetarian ? 'bg-green-50 border-green-500 text-green-700 shadow-sm' : 'bg-white/50 border-white/60 text-gray-500'}`}>Veg</button>
+                  <button type="button" onClick={() => setDishData({...dishData, isVegetarian: false})} className={`flex-1 py-1.5 rounded-xl text-sm font-bold border transition-colors ${!dishData.isVegetarian ? 'bg-red-50 border-red-500 text-red-700 shadow-sm' : 'bg-white/50 border-white/60 text-gray-500'}`}>Non-Veg</button>
+                </div>
+              </div>
+              <div className="md:col-span-2 lg:col-span-4">
                 <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1"><ImageIcon size={12}/> Image URL</label>
                 <input type="text" value={dishData.imageUrl} onChange={e => setDishData({...dishData, imageUrl: e.target.value})} className="w-full mt-1 p-2.5 rounded-xl bg-white/50 border border-white/60 focus:ring-2 focus:ring-primary-500 outline-none font-bold" placeholder="https://..." />
               </div>
@@ -169,7 +177,10 @@ export default function AdminMenuPage() {
           <div key={item.id} className={`glass rounded-3xl overflow-hidden border hover:shadow-xl transition-all flex flex-col group relative ${isOutOfStock ? 'border-red-200 opacity-70' : 'border-white/50'}`}>
             <div className="h-40 w-full overflow-hidden relative">
               <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-              <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-black text-gray-800 uppercase shadow-sm">
+              <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-black text-gray-800 uppercase shadow-sm flex items-center gap-2">
+                <div className={`w-3 h-3 border flex items-center justify-center rounded-[2px] ${item.isVegetarian !== false ? 'border-green-600' : 'border-red-600'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${item.isVegetarian !== false ? 'bg-green-600' : 'bg-red-600'}`} />
+                </div>
                 {item.category}
               </div>
               {isOutOfStock && (

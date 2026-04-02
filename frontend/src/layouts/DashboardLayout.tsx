@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout } from '../features/auth/authSlice';
-import { fetchAdminData } from '../features/admin/adminSlice';
+import { fetchAdminData, clearAdminData } from '../features/admin/adminSlice';
 import { ROLES, ROLE_LABELS } from '../utils/constants';
 import AnimatedLogo from '../components/common/AnimatedLogo';
 import { MetalButton } from '../components/ui/liquid-glass-button';
@@ -14,21 +14,23 @@ import {
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAppSelector(state => state.auth);
-  const adminDataLoaded = useAppSelector(state => state.admin.users.length > 0);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch all admin data from the API on mount (handles page refresh)
+  // Always fetch fresh data on mount & refresh periodically
   useEffect(() => {
-    if (user && !adminDataLoaded) {
+    if (user) {
       dispatch(fetchAdminData());
+      const interval = setInterval(() => dispatch(fetchAdminData()), 30000);
+      return () => clearInterval(interval);
     }
-  }, [user, adminDataLoaded, dispatch]);
+  }, [user, dispatch]);
 
   const handleLogout = () => {
     localStorage.removeItem('foodieBuddyToken');
     localStorage.removeItem('foodieBuddyAuth');
+    dispatch(clearAdminData());
     dispatch(logout());
     navigate('/login');
   };

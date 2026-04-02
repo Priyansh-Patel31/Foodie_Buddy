@@ -26,6 +26,12 @@ public class OrderDTO {
     private BigDecimal customerCharge;
     private BigDecimal calculatedProfit;
     private LocalDateTime createdAt;
+    
+    // Rating Fields
+    private Boolean isRated;
+    private Integer deliveryRating;
+    private Integer foodRating;
+    
     private List<OrderItemDTO> items;
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

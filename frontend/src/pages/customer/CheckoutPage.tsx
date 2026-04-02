@@ -4,6 +4,7 @@ import { Steps } from 'antd';
 import { MapPin, CreditCard, CheckCircle2 } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { clearCart } from '../../features/cart/cartSlice';
+import { placeOrderApi } from '../../features/admin/adminSlice';
 import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
@@ -12,6 +13,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { items, subtotal, deliveryFee } = useAppSelector(state => state.cart);
+  const { user } = useAppSelector(state => state.auth);
   
   const total = subtotal + deliveryFee;
 
@@ -29,13 +31,42 @@ export default function CheckoutPage() {
     );
   }
 
-  const handlePlaceOrder = () => {
-    toast.loading('Processing your order...', { duration: 2000 });
-    setTimeout(() => {
-      dispatch(clearCart());
-      toast.success('Order placed successfully!');
-      navigate('/order-tracking/ORD-12345');
-    }, 2000);
+  const handlePlaceOrder = async () => {
+    toast.loading('Processing your order...', { id: 'checkout' });
+    
+    try {
+      // Map cart items to backend DTO format
+      const orderItems = items.map(item => ({
+        menuItemId: item.id,
+        quantity: item.quantity,
+        price: item.price
+      }));
+
+      // Simulate address extraction from form
+      const address = localStorage.getItem('foodieBuddyLocation') || "Block A, Silicon Valley Apartments, Near Main Road";
+
+      // Call the real API thunk
+      const resultAction = await dispatch(placeOrderApi({
+        items: orderItems,
+        customerAddress: address,
+        customerPhone: user?.id || 'GUEST',
+        // other fields like coords can go here in future
+      }));
+
+      if (placeOrderApi.fulfilled.match(resultAction)) {
+        const orderId = resultAction.payload.id;
+        dispatch(clearCart());
+        toast.dismiss('checkout');
+        toast.success('Order placed successfully!', { id: 'checkout-success' });
+        navigate(`/order-tracking/${orderId}`);
+      } else {
+        toast.dismiss('checkout');
+        toast.error('Failed to place order.');
+      }
+    } catch (e) {
+      toast.dismiss('checkout');
+      toast.error('Something went wrong.');
+    }
   };
 
   const steps = [
