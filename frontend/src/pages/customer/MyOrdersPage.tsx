@@ -66,7 +66,7 @@ export default function MyOrdersPage() {
           onClick={() => setTab('past')}
           className={`px-5 py-2.5 rounded-full text-sm font-black transition-all ${
             tab === 'past'
-              ? 'bg-gray-900 text-white shadow-md'
+              ? 'btn-glass shadow-md'
               : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
           }`}
         >

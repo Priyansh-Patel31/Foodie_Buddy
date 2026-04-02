@@ -74,8 +74,6 @@ function App() {
           <Route path="/admin/payroll" element={<AdminPayrollPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/roster" element={<ManagerStaffPage />} />
-          <Route path="/profile" element={<ProfileAttendancePage />} />
-          <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Manager Routes */}
@@ -87,20 +85,22 @@ function App() {
           <Route path="/manager/staff" element={<ManagerStaffPage />} />
           <Route path="/manager/crm" element={<ManagerCRMPage />} />
           <Route path="/manager/reports" element={<ManagerReportsPage />} />
-          <Route path="/profile" element={<ProfileAttendancePage />} />
-          <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Chef Route */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.CHEF]}><DashboardLayout /></ProtectedRoute>}>
           <Route path="/kitchen" element={<ChefDashboardPage />} />
-          <Route path="/profile" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Delivery Route */}
         <Route element={<ProtectedRoute allowedRoles={[ROLES.DELIVERY]}><DashboardLayout /></ProtectedRoute>}>
           <Route path="/delivery" element={<DeliveryDashboardPage />} />
+        </Route>
+
+        {/* Shared Staff Profile / Attendance */}
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.DELIVERY]}><DashboardLayout /></ProtectedRoute>}>
           <Route path="/profile" element={<ProfileAttendancePage />} />
+          <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
 
         {/* Catch All Redirect */}

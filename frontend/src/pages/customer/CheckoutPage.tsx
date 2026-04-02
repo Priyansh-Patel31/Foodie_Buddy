@@ -12,8 +12,12 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('card');
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { items, subtotal, deliveryFee } = useAppSelector(state => state.cart);
+  const { items, subtotal } = useAppSelector(state => state.cart);
   const { user } = useAppSelector(state => state.auth);
+  const locationState = useAppSelector(state => state.location);
+  const deliveryFee = locationState.deliveryFee ?? 49;
+  const deliveryAddress = locationState.deliveryAddress;
+  const deliveryCoords = locationState.deliveryCoords;
   
   const total = subtotal + deliveryFee;
 
@@ -35,22 +39,22 @@ export default function CheckoutPage() {
     toast.loading('Processing your order...', { id: 'checkout' });
     
     try {
-      // Map cart items to backend DTO format
+      // Map cart items to backend DTO format (menuItemId + quantity only; backend looks up price)
       const orderItems = items.map(item => ({
         menuItemId: item.id,
         quantity: item.quantity,
-        price: item.price
       }));
 
-      // Simulate address extraction from form
-      const address = localStorage.getItem('foodieBuddyLocation') || "Block A, Silicon Valley Apartments, Near Main Road";
+      const address = deliveryAddress || localStorage.getItem('foodieBuddyLocation') || "Block A, Silicon Valley Apartments, Near Main Road";
 
-      // Call the real API thunk
+      // Send coordinates so the backend can calculate delivery fee & distance
+      // deliveryCoords is [longitude, latitude] — backend expects lat/lng separately
       const resultAction = await dispatch(placeOrderApi({
         items: orderItems,
         customerAddress: address,
-        customerPhone: user?.id || 'GUEST',
-        // other fields like coords can go here in future
+        customerPhone: user?.email || 'N/A',
+        customerLatitude: deliveryCoords ? deliveryCoords[1] : 23.0735,
+        customerLongitude: deliveryCoords ? deliveryCoords[0] : 72.5146,
       }));
 
       if (placeOrderApi.fulfilled.match(resultAction)) {
@@ -101,7 +105,7 @@ export default function CheckoutPage() {
             <button 
               type="button"
               onClick={() => setCurrentStep(1)}
-              className="w-full bg-gray-900 text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-gray-800 transition-colors"
+              className="w-full btn-glass font-black py-3.5 rounded-xl mt-4"
             >
               Save Address & Proceed
             </button>
@@ -186,7 +190,7 @@ export default function CheckoutPage() {
             </button>
             <button 
               onClick={() => setCurrentStep(2)}
-              className="flex-1 bg-gray-900 text-white font-bold py-3.5 rounded-xl hover:bg-gray-800 transition-colors"
+              className="flex-1 btn-glass font-black py-3.5 rounded-xl"
             >
               Review Order
             </button>
@@ -265,7 +269,11 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-gray-600 text-sm">
               <span>Delivery Fee</span>
-              <span>₹{deliveryFee}</span>
+              {deliveryFee === 0 ? (
+                <span className="text-green-600 font-black">FREE</span>
+              ) : (
+                <span>₹{deliveryFee}</span>
+              )}
             </div>
             <div className="flex justify-between text-gray-900 font-black text-lg pt-3 border-t border-gray-200">
               <span>To Pay</span>

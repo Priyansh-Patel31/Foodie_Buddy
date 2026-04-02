@@ -23,14 +23,11 @@ interface ItemCustomizeModalProps {
     rating?: number;
     votes?: number;
     categoryName?: string;
+    toppings?: any[];
+    ingredients?: any[];
   } | null;
 }
 
-const DEFAULT_ADDONS: Addon[] = [
-  { name: 'Extra Cheese Slice', price: 30 },
-  { name: 'Double Patty', price: 60 },
-  { name: 'Extra Sauce', price: 15 },
-];
 
 export default function ItemCustomizeModal({ isOpen, onClose, item }: ItemCustomizeModalProps) {
   const dispatch = useAppDispatch();
@@ -58,7 +55,12 @@ export default function ItemCustomizeModal({ isOpen, onClose, item }: ItemCustom
     });
   };
 
-  const addonTotal = DEFAULT_ADDONS
+  const availableToppings: Addon[] = (item?.toppings || item?.ingredients || []).map((t: any) => ({
+    name: t.name || t.inventoryItemName || 'Extra',
+    price: Number(t.price || t.quantityRequired || 0)
+  }));
+
+  const addonTotal = availableToppings
     .filter(a => selectedAddons.has(a.name))
     .reduce((sum, a) => sum + a.price, 0);
 
@@ -162,30 +164,36 @@ export default function ItemCustomizeModal({ isOpen, onClose, item }: ItemCustom
                 <p className="text-gray-500 text-sm leading-relaxed mb-6">{item.description}</p>
 
                 {/* Add-ons */}
-                <div className="mb-6">
-                  <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">
-                    What would you like to add?
-                  </h3>
-                  <div className="space-y-2">
-                    {DEFAULT_ADDONS.map((addon) => (
-                      <label
-                        key={addon.name}
-                        className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-gray-200 cursor-pointer transition-all hover:bg-gray-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedAddons.has(addon.name)}
-                            onChange={() => toggleAddon(addon.name)}
-                            className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 accent-orange-500"
-                          />
-                          <span className="text-sm font-semibold text-gray-700">{addon.name}</span>
-                        </div>
-                        <span className="text-sm font-bold text-gray-500">+₹{addon.price}</span>
-                      </label>
-                    ))}
+                {availableToppings.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">
+                      What would you like to add?
+                    </h3>
+                    <div className="space-y-2">
+                      {availableToppings.map((addon) => (
+                        <label
+                          key={addon.name}
+                          className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-gray-200 cursor-pointer transition-all hover:bg-gray-50"
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedAddons.has(addon.name)}
+                              onChange={() => toggleAddon(addon.name)}
+                              className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500 accent-orange-500"
+                            />
+                            <span className="text-sm font-semibold text-gray-700">{addon.name}</span>
+                          </div>
+                          {addon.price > 0 ? (
+                            <span className="text-sm font-bold text-gray-500">+₹{addon.price}</span>
+                          ) : (
+                            <span className="text-sm font-bold text-green-600">Free</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Quantity */}
                 <div className="flex items-center justify-between mb-6">

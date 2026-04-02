@@ -13,4 +13,5 @@ public class MenuItemDTO {
     private String categoryName;
     private Boolean isAvailable;
     private Boolean isVegetarian;
+    private java.util.List<com.foodiebuddy.admin.entity.IngredientRequirement> ingredients;
 }

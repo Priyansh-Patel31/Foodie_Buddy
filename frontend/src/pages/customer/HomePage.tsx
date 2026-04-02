@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppSelector } from '../../store/hooks';
+import { useSearchParams } from 'react-router-dom';
 import { Star, Clock, Tag } from 'lucide-react';
 import UserMenuCard from '../../components/restaurant/UserMenuCard';
 import ItemCustomizeModal from '../../components/restaurant/ItemCustomizeModal';
@@ -28,6 +29,8 @@ function getItemMeta(id: string) {
 
 export default function HomePage() {
   const { menuItems } = useAppSelector(state => state.admin);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q')?.toLowerCase() || '';
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [customizeItem, setCustomizeItem] = useState<any>(null);
@@ -37,16 +40,26 @@ export default function HomePage() {
 
   // Show location modal on first visit
   useEffect(() => {
-    const hasSetLocation = localStorage.getItem('foodieBuddyLocation');
+    const hasSetLocation = localStorage.getItem('foodieBuddyLocationData') || localStorage.getItem('foodieBuddyLocation');
     if (!hasSetLocation) {
       const timer = setTimeout(() => setShowLocationFirst(true), 800);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  // Group available menu items by category
+  // Group available menu items by category + handle search filter
   const availableItems = menuItems.filter(item => item.isAvailable);
-  const groupedMenu = availableItems.reduce((acc, item) => {
+  
+  const searchFilteredItems = availableItems.filter(item => {
+    if (!searchQuery) return true;
+    return (
+      item.name.toLowerCase().includes(searchQuery) ||
+      (item.description || '').toLowerCase().includes(searchQuery) ||
+      (item.categoryName || item.category || '').toLowerCase().includes(searchQuery)
+    );
+  });
+
+  const groupedMenu = searchFilteredItems.reduce((acc, item) => {
     const cat = item.categoryName || item.category || 'Other';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);
@@ -91,8 +104,7 @@ export default function HomePage() {
     }
   };
 
-  const handleLocationSelect = (address: string) => {
-    localStorage.setItem('foodieBuddyLocation', address);
+  const handleLocationSelect = () => {
     setShowLocationFirst(false);
   };
 
@@ -283,10 +295,26 @@ export default function HomePage() {
 
             {/* Empty state */}
             {categories.length === 0 && (
-              <div className="h-60 flex flex-col items-center justify-center bg-white rounded-3xl border border-gray-100 shadow-sm">
-                <div className="text-5xl mb-4">🍽️</div>
-                <p className="text-gray-400 font-bold text-lg">No dishes available right now</p>
-                <p className="text-gray-300 text-sm mt-1">The kitchen is setting things up!</p>
+              <div className="h-80 flex flex-col items-center justify-center bg-white rounded-3xl border border-gray-100 shadow-sm px-6 text-center">
+                <div className="text-6xl mb-4 animate-bounce">
+                  {searchQuery ? '🔍' : '🍽️'}
+                </div>
+                <h3 className="text-xl font-black text-gray-900 mb-2">
+                  {searchQuery ? `No results for "${searchQuery}"` : 'No dishes available right now'}
+                </h3>
+                <p className="text-gray-500 font-medium max-w-sm">
+                  {searchQuery 
+                    ? "Try searching for something else or browse our categories." 
+                    : "The kitchen is setting things up! Please check back in a few minutes."}
+                </p>
+                {searchQuery && (
+                  <button 
+                    onClick={() => window.location.href = '/'}
+                    className="mt-6 px-6 py-2.5 bg-orange-500 text-white font-black rounded-xl shadow-md shadow-orange-200 transition-all hover:scale-105 active:scale-95"
+                  >
+                    Clear Search
+                  </button>
+                )}
               </div>
             )}
           </div>

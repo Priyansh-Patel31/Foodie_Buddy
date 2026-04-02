@@ -349,7 +349,7 @@ export const placeOrderApi = createAsyncThunk('admin/placeOrder', async (orderDa
       customerId: orderData.customerPhone || 'U1',
       customerName: 'Guest User',
       status: 'PLACED',
-      charge: orderData.items?.reduce((sum: number, i: any) => sum + (i.price * i.quantity), 0) + 40,
+      charge: 500, // Dummy fallback value since price is calculated backend-side
       profit: 100,
       deliveryAddress: orderData.customerAddress,
       assignedChefId: '',
@@ -524,7 +524,11 @@ export const adminSlice = createSlice({
     builder.addCase(fetchAllOrders.fulfilled, (state, action) => {
       const data = action.payload || [];
       if (Array.isArray(data) && data.length > 0) {
-        state.orders = data.map(mapOrder);
+        const apiOrders = data.map(mapOrder);
+        const apiOrderIds = new Set(apiOrders.map(o => o.id));
+        // Keep any locally-placed orders (fallback mock orders) that aren't in the API response
+        const localOnlyOrders = state.orders.filter(o => !apiOrderIds.has(o.id) && o.status === 'PLACED');
+        state.orders = [...localOnlyOrders, ...apiOrders];
       }
     });
 

@@ -1,62 +1,91 @@
-import { motion } from 'framer-motion';
-
 export default function AnimatedLogo() {
   return (
-    <div className="flex items-center gap-3 group relative cursor-pointer">
-      {/* 3D Animated Abstract Icon */}
-      <div className="relative w-12 h-12 flex items-center justify-center perspective-[1000px]">
-        {/* Background glow pulse */}
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.5, 0.8, 0.5],
-          }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-primary-500/30 blur-xl rounded-full"
-        />
+    <div className="flex items-center gap-2.5 select-none">
+      <div className="relative w-10 h-10 shrink-0">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+          <style>{`
+            @keyframes orbitA {
+              0%   { transform: rotate(0deg)   translateX(10px) rotate(0deg); }
+              100% { transform: rotate(360deg) translateX(10px) rotate(-360deg); }
+            }
+            @keyframes orbitB {
+              0%   { transform: rotate(120deg)  translateX(10px) rotate(-120deg); }
+              100% { transform: rotate(480deg)  translateX(10px) rotate(-480deg); }
+            }
+            @keyframes orbitC {
+              0%   { transform: rotate(240deg)  translateX(10px) rotate(-240deg); }
+              100% { transform: rotate(600deg)  translateX(10px) rotate(-600deg); }
+            }
+            @keyframes pulse-core {
+              0%, 100% { opacity: 1;    transform: scale(1); }
+              50%       { opacity: 0.85; transform: scale(1.15); }
+            }
+            @keyframes spin-ring     { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
+            @keyframes spin-ring-rev { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
+            @keyframes emoji-bob {
+              0%, 100% { transform: translateY(0px) scale(1); }
+              50%       { transform: translateY(-1px) scale(1.05); }
+            }
+            .dot-a { animation: orbitA 3s linear infinite; transform-origin: 20px 20px; }
+            .dot-b { animation: orbitB 3s linear infinite; transform-origin: 20px 20px; }
+            .dot-c { animation: orbitC 3s linear infinite; transform-origin: 20px 20px; }
+            .core  { animation: pulse-core 2.2s ease-in-out infinite; transform-origin: 20px 20px; }
+            .ring1 { animation: spin-ring 8s linear infinite; transform-origin: 20px 20px; }
+            .ring2 { animation: spin-ring-rev 5s linear infinite; transform-origin: 20px 20px; }
+            .pizza { animation: emoji-bob 2.2s ease-in-out infinite; transform-origin: 20px 20px; }
+          `}</style>
 
-        {/* Outer Rotating Ring (Sci-fi orbit) */}
-        <motion.div
-          animate={{
-            rotateX: [0, 360],
-            rotateY: [0, 360],
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-          className="absolute w-full h-full border border-primary-400/50 rounded-full box-border"
-          style={{ transformStyle: 'preserve-3d' }}
-        />
-        
-        {/* Inner Abstract Hexagon/Cube (3D Glass) */}
-        <motion.div
-          animate={{
-            rotateZ: [0, 360],
-            rotateX: [20, 40, 20],
-            rotateY: [-20, -40, -20],
-          }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-          className="relative w-8 h-8 font-black flex items-center justify-center text-white bg-gradient-to-br from-primary-400 via-primary-500 to-primary-700 rounded-lg shadow-[0_0_20px_rgba(249,115,22,0.6)] backdrop-blur-md overflow-hidden border border-white/20"
-          style={{ transformStyle: 'preserve-3d' }}
-        >
-          {/* F inner letter abstract shape */}
-          <span className="relative z-10 text-xl font-outfit drop-shadow-md">F</span>
-          
-          {/* Glass glare effect inside */}
-          <div className="absolute top-0 right-0 w-full h-1/2 bg-gradient-to-b from-white/40 to-transparent transform -skew-y-12 translate-y-[-10px]"></div>
-        </motion.div>
+          {/* Rings */}
+          <circle className="ring1" cx="20" cy="20" r="16" stroke="#f97316" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.45" />
+          <circle className="ring2" cx="20" cy="20" r="11" stroke="#fb923c" strokeWidth="0.6" strokeDasharray="2 5" opacity="0.3" />
+
+          {/* Orbiting dots */}
+          <circle className="dot-a" cx="20" cy="20" r="2.4" fill="#f97316" />
+          <circle className="dot-b" cx="20" cy="20" r="2.4" fill="#fb923c" />
+          <circle className="dot-c" cx="20" cy="20" r="2.4" fill="#fdba74" />
+
+          {/* Core glow */}
+          <circle className="core" cx="20" cy="20" r="6.5" fill="url(#coreGrad)" />
+
+          {/* Pizza slice inside core */}
+          <g className="pizza">
+            {/* crust */}
+            <path d="M17.3 18.8 Q20 15.8 22.7 18.8 Z" fill="#f59e0b" stroke="#d97706" strokeWidth="0.35" />
+            {/* body */}
+            <path d="M17.3 18.8 L20 24.2 L22.7 18.8 Q20 15.8 17.3 18.8 Z" fill="#fcd34d" stroke="#d97706" strokeWidth="0.3" />
+            {/* cheese */}
+            <path d="M17.7 19.4 L20 23.4 L22.3 19.4 Q20 17.2 17.7 19.4 Z" fill="#fef9c3" opacity="0.75" />
+            {/* pepperoni */}
+            <circle cx="19.2" cy="20.6" r="0.72" fill="#ef4444" opacity="0.9" />
+            <circle cx="20.9" cy="21.5" r="0.66" fill="#ef4444" opacity="0.9" />
+            <circle cx="20.1" cy="19.6" r="0.55" fill="#dc2626" opacity="0.9" />
+          </g>
+
+          <defs>
+            <radialGradient id="coreGrad" cx="40%" cy="35%">
+              <stop offset="0%" stopColor="#fb923c" />
+              <stop offset="100%" stopColor="#c2410c" />
+            </radialGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* Sci-Fi Text with 3D Pop/Neon Effect */}
-      <div className="hidden sm:flex flex-col relative">
-        <span className="font-black text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 font-outfit relative z-10">
-          Foodie-Buddy
+      {/* Wordmark */}
+      <div className="flex flex-col leading-none">
+        <span
+          className="text-lg font-black tracking-tight"
+          style={{
+            background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }}
+        >
+          foodie
         </span>
-        {/* Subtle high-tech underline animation */}
-        <motion.div 
-          className="absolute -bottom-1 left-0 h-0.5 bg-gradient-to-r from-primary-400 to-transparent"
-          initial={{ width: '0%' }}
-          whileHover={{ width: '100%' }}
-          transition={{ duration: 0.3 }}
-        />
+        <span className="text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase -mt-0.5">
+          buddy
+        </span>
       </div>
     </div>
   );

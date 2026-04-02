@@ -28,7 +28,7 @@ export default function PromotionBanners() {
           <div className="relative z-10 w-2/3">
             <span className="uppercase tracking-widest text-accent-100 font-bold text-xs mb-2 block">Weekend Deal</span>
             <h3 className="text-3xl sm:text-4xl font-black mb-3 leading-tight font-outfit">Up to 50% Off Desserts</h3>
-            <button className="flex items-center gap-2 text-sm font-bold bg-gray-900 text-white px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors w-max shadow-md">
+            <button className="flex items-center gap-2 text-sm font-black btn-glass px-5 py-2.5 rounded-full w-max shadow-md transition-all hover:scale-105 active:scale-95">
               Explore Deals <ArrowRight className="w-4 h-4" />
             </button>
           </div>

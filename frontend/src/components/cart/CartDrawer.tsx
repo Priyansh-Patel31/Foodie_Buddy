@@ -13,7 +13,9 @@ interface CartDrawerProps {
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { items, subtotal, deliveryFee } = useAppSelector(state => state.cart);
+  const { items, subtotal } = useAppSelector(state => state.cart);
+  const locationFee = useAppSelector(state => state.location.deliveryFee);
+  const deliveryFee = locationFee ?? 49;
 
   const total = subtotal + deliveryFee;
 
@@ -161,7 +163,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   </div>
                   <div className="flex justify-between text-gray-500 font-medium text-sm">
                     <span>Delivery Fee</span>
-                    <span className="text-gray-900">₹{deliveryFee}</span>
+                    {deliveryFee === 0 ? (
+                      <span className="text-green-600 font-black">FREE</span>
+                    ) : (
+                      <span className="text-gray-900">₹{deliveryFee}</span>
+                    )}
                   </div>
                   <div className="flex justify-between font-black text-xl pt-4 border-t border-dashed border-gray-200 font-outfit text-gray-900">
                     <span>To Pay</span>

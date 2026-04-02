@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { updateUserRoleApi } from '../../features/admin/adminSlice';
-import { ShieldCheck, UserCog, Lock, AlertOctagon, Loader2, X, CalendarDays, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ShieldCheck, UserCog, Lock, AlertOctagon, Loader2, X, CalendarDays, CheckCircle, Clock, XCircle, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface ShiftEntry {
@@ -16,6 +17,7 @@ interface ShiftEntry {
 
 export default function AdminUsersPage() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { users } = useAppSelector(state => state.admin);
 
   const [confirmingAction, setConfirmingAction] = useState<{id: string, newRole: string} | null>(null);
@@ -249,8 +251,18 @@ export default function AdminUsersPage() {
                       <tr key={shift.id} className="hover:bg-white/40 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <span className="font-bold text-gray-800">{shift.name}</span>
-                            <span className="text-[10px] bg-primary-50 text-primary-700 px-2 rounded-full uppercase font-black">{shift.role}</span>
+                            <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-orange-400 rounded-full flex items-center justify-center text-white font-black text-xs cursor-pointer" onClick={() => navigate(`/profile/${shift.id}`)}>
+                              {shift.name.charAt(0)}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-gray-800 flex items-center gap-1.5 capita">
+                                {shift.name}
+                                <button onClick={() => navigate(`/profile/${shift.id}`)} title="View Attendance Log">
+                                  <Calendar size={12} className="text-primary-400 hover:text-primary-600 cursor-pointer" />
+                                </button>
+                              </span>
+                              <span className="text-[10px] bg-primary-50 text-primary-700 px-2 rounded-full uppercase font-black w-fit">{shift.role}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="p-4 font-bold text-gray-700 text-sm">{shift.checkIn}</td>

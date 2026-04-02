@@ -21,21 +21,27 @@ export default function OrderTrackingPage() {
   const { id } = useParams();
   const dispatch = useAppDispatch();
   const { orders } = useAppSelector(state => state.admin);
-  const [loading, setLoading] = useState(true);
   const [deliveryRatingInput, setDeliveryRatingInput] = useState(0);
   const [foodRatingInput, setFoodRatingInput] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
-
-  // Poll for live status
-  useEffect(() => {
-    dispatch(fetchAllOrders()).finally(() => setLoading(false));
-    const interval = setInterval(() => dispatch(fetchAllOrders()), 5000);
-    return () => clearInterval(interval);
-  }, [dispatch]);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const order = orders.find(o => o.id === id);
+
+  // Poll for live status updates, but don't wipe a freshly placed order
+  useEffect(() => {
+    // Only fetch if we don't already have this order in the store
+    if (!order) {
+      dispatch(fetchAllOrders()).finally(() => setHasFetched(true));
+    } else {
+      setHasFetched(true);
+    }
+    // Poll every 5s for status updates (only after initial load)
+    const interval = setInterval(() => dispatch(fetchAllOrders()), 5000);
+    return () => clearInterval(interval);
+  }, [dispatch, !order]); // re-run if order presence changes
   
-  if (loading && !order) {
+  if (!hasFetched && !order) {
     return <div className="max-w-3xl mx-auto py-20 text-center font-bold text-gray-500">Loading Order Tracking...</div>;
   }
 

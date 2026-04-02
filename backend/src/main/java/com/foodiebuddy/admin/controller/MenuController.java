@@ -71,6 +71,7 @@ public class MenuController {
                 .categoryName(m.getCategoryName())
                 .isAvailable(m.getIsAvailable())
                 .isVegetarian(m.getIsVegetarian())
+                .ingredients(m.getIngredients())
                 .build();
     }
 }

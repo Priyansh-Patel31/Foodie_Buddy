@@ -3,6 +3,7 @@ import authReducer from '../features/auth/authSlice';
 import cartReducer from '../features/cart/cartSlice';
 import restaurantReducer from '../features/restaurant/restaurantSlice';
 import adminReducer from '../features/admin/adminSlice';
+import locationReducer from '../features/location/locationSlice';
 
 // Only persist auth state (user session) — admin data comes from the API
 const loadAuthState = () => {
@@ -37,6 +38,7 @@ export const store = configureStore({
     cart: cartReducer,
     restaurant: restaurantReducer,
     admin: adminReducer,
+    location: locationReducer,
   },
   preloadedState,
 });

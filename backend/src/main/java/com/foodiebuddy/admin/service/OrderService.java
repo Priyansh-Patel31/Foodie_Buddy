@@ -69,11 +69,21 @@ public class OrderService {
             inventoryService.deductForMenuItem(menuItem, itemReq.getQuantity());
         }
 
-        // Calculate delivery fee
-        double distance = deliveryFeeService.calculateDistance(
-                request.getCustomerLatitude(), request.getCustomerLongitude());
-        distance = Math.round(distance * 10.0) / 10.0;
-        BigDecimal deliveryFee = deliveryFeeService.calculateDeliveryFee(distance);
+        // Calculate delivery fee — with null-safe coordinates
+        // Default to restaurant location (distance=0, free delivery) if coords are missing
+        Double customerLat = request.getCustomerLatitude();
+        Double customerLng = request.getCustomerLongitude();
+        double distance;
+        BigDecimal deliveryFee;
+
+        if (customerLat != null && customerLng != null) {
+            distance = deliveryFeeService.calculateDistance(customerLat, customerLng);
+            distance = Math.round(distance * 10.0) / 10.0;
+            deliveryFee = deliveryFeeService.calculateDeliveryFee(distance);
+        } else {
+            distance = 0.0;
+            deliveryFee = BigDecimal.ZERO;
+        }
 
         // Total = subtotal + deliveryFee (no tax)
         BigDecimal totalAmount = subtotal.add(deliveryFee);
