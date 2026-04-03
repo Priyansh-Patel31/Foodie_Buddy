@@ -135,13 +135,15 @@ export default function ManagerOrdersPage() {
         .unwrap()
         .then(() => {
           toast.success(`👨‍🍳 ${worker.name} assigned as Chef for ${order.id}.`);
+          dispatch(fetchAllOrders());
           // Order stays in current status — chef must accept from their dashboard
         })
-        .catch(() => toast.success(`👨‍🍳 Locally assigned: ${worker.name} (Chef)`));
+        .catch((error) => toast.error(typeof error === 'string' ? error : `Failed to assign chef for ${order.id}.`));
     } else {
       dispatch(assignDeliveryApi({ orderId: order.id, userId, userName: worker.name }))
         .unwrap()
         .then(() => {
+          dispatch(fetchAllOrders());
           // Don't auto-change status! Rider must accept from their dashboard.
           if (order.status === 'READY') {
             toast.success(`🛵 ${worker.name} dispatched for ${order.id}. Waiting for rider to pick up.`);
@@ -149,7 +151,7 @@ export default function ManagerOrdersPage() {
             toast.success(`🛵 ${worker.name} pre-assigned as rider for ${order.id}. They'll see it when food is ready.`);
           }
         })
-        .catch(() => toast.success(`🛵 Locally assigned: ${worker.name} (Rider)`));
+        .catch((error) => toast.error(typeof error === 'string' ? error : `Failed to assign rider for ${order.id}.`));
     }
     setAssignModal(null);
   };

@@ -1,7 +1,7 @@
 package com.foodiebuddy.admin.controller;
 
 import com.foodiebuddy.admin.dto.*;
-import com.foodiebuddy.admin.entity.enums.OrderStatus;
+import com.foodiebuddy.admin.exception.BadRequestException;
 import com.foodiebuddy.admin.security.JwtTokenProvider;
 import com.foodiebuddy.admin.service.DeliveryFeeService;
 import com.foodiebuddy.admin.service.OrderService;
@@ -39,18 +39,34 @@ public class DeliveryController {
 
     @PutMapping("/api/delivery/pickup/{orderId}")
     @Operation(summary = "Mark order as picked up")
-    public ResponseEntity<ApiResponse<OrderDTO>> markPickedUp(@PathVariable String orderId) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.updateStatus(orderId, OrderStatus.PICKED_UP)));
+    public ResponseEntity<ApiResponse<OrderDTO>> markPickedUp(@PathVariable String orderId, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.pickupOrder(orderId, userId)));
+    }
+
+    @PutMapping("/api/delivery/start/{orderId}")
+    @Operation(summary = "Start delivery (order is out for delivery)")
+    public ResponseEntity<ApiResponse<OrderDTO>> startDelivery(@PathVariable String orderId, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.startDelivery(orderId, userId)));
     }
 
     @PutMapping("/api/delivery/deliver/{orderId}")
     @Operation(summary = "Mark order as delivered")
-    public ResponseEntity<ApiResponse<OrderDTO>> markDelivered(@PathVariable String orderId) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.updateStatus(orderId, OrderStatus.DELIVERED)));
+    public ResponseEntity<ApiResponse<OrderDTO>> markDelivered(@PathVariable String orderId, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.completeDelivery(orderId, userId)));
     }
 
     private String extractUserId(HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        return tokenProvider.getUserIdFromToken(token);
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ") || authHeader.length() <= 7) {
+            throw new BadRequestException("Missing or invalid Authorization header");
+        }
+        try {
+            return tokenProvider.getUserIdFromToken(authHeader.substring(7));
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid authentication token");
+        }
     }
 }

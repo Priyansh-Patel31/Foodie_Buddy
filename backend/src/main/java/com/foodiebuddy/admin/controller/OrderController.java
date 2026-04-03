@@ -2,6 +2,7 @@ package com.foodiebuddy.admin.controller;
 
 import com.foodiebuddy.admin.dto.*;
 
+import com.foodiebuddy.admin.exception.BadRequestException;
 import com.foodiebuddy.admin.security.JwtTokenProvider;
 import com.foodiebuddy.admin.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,7 +54,14 @@ public class OrderController {
     }
 
     private String extractUserId(HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        return tokenProvider.getUserIdFromToken(token);
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ") || authHeader.length() <= 7) {
+            throw new BadRequestException("Missing or invalid Authorization header");
+        }
+        try {
+            return tokenProvider.getUserIdFromToken(authHeader.substring(7));
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid authentication token");
+        }
     }
 }

@@ -133,19 +133,108 @@ const FALLBACK_TRANSACTIONS: TransactionData[] = [
   { id: 't16', type: 'ORDER_REVENUE', amount: 150000, description: 'Store Launch Celebration', date: '2025-05-01T12:00:00' },
 ];
 
+const OFFLINE_ORDERS_KEY = 'foodieBuddyOfflineOrders';
+
+function readOfflineOrders(): OrderData[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(OFFLINE_ORDERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as OrderData[];
+  } catch {
+    return [];
+  }
+}
+
+function writeOfflineOrders(orders: OrderData[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(OFFLINE_ORDERS_KEY, JSON.stringify(orders));
+  } catch {
+    // ignore localStorage write errors
+  }
+}
+
+function mergeOrdersById(primary: OrderData[], secondary: OrderData[]): OrderData[] {
+  const byId = new Map<string, OrderData>();
+  [...secondary, ...primary].forEach((order) => {
+    if (order?.id) byId.set(order.id, order);
+  });
+  return Array.from(byId.values()).sort((a, b) => {
+    const aTime = new Date(a.date || 0).getTime();
+    const bTime = new Date(b.date || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
+function filterOrdersForRole(orders: OrderData[], role?: string, userId?: string): OrderData[] {
+  if (role === 'ROLE_CUSTOMER') {
+    if (!userId) return [];
+    return orders.filter((o) => o.customerId === userId);
+  }
+  if (role === 'ROLE_CHEF') {
+    if (!userId) return [];
+    return orders.filter((o) =>
+      o.assignedChefId === userId &&
+      ['PLACED', 'CONFIRMED', 'PREPARING', 'READY'].includes(o.status)
+    );
+  }
+  if (role === 'ROLE_DELIVERY') {
+    if (!userId) return [];
+    return orders.filter((o) =>
+      o.assignedDeliveryId === userId &&
+      ['READY', 'PICKED_UP', 'OUT_FOR_DELIVERY'].includes(o.status)
+    );
+  }
+  return orders;
+}
+
+function upsertOfflineOrder(order: OrderData) {
+  const merged = mergeOrdersById([order], readOfflineOrders());
+  writeOfflineOrders(merged);
+}
+
+function isFallbackMenuId(id: string | undefined): boolean {
+  if (!id) return false;
+  return /^m\d+$/i.test(id);
+}
+
+function getApiErrorMessage(error: any): string {
+  const responseData = error?.response?.data;
+  return (
+    responseData?.message ||
+    responseData?.error ||
+    responseData?.data?.message ||
+    error?.message ||
+    'Request failed'
+  );
+}
+
+function isHttpError(error: any): boolean {
+  return Boolean(error?.response);
+}
+
 // ========================== ASYNC THUNKS ==========================
 
 export const fetchAllMenu = createAsyncThunk('admin/fetchMenu', async (_, { getState }) => {
   const state = getState() as any;
   const role = state.auth.user?.role;
   const isStaff = role === 'ROLE_ADMIN' || role === 'ROLE_MANAGER';
-  const res = await apiClient.get(isStaff ? '/admin/menu' : '/menu');
-  return res.data.data || res.data;
+  try {
+    const res = await apiClient.get(isStaff ? '/admin/menu' : '/menu');
+    return res.data.data || res.data;
+  } catch (error: any) {
+    if (error?.response) throw error;
+    return FALLBACK_MENU;
+  }
 });
 
 export const fetchAllOrders = createAsyncThunk('admin/fetchOrders', async (_, { getState }) => {
   const state = getState() as any;
   const role = state.auth.user?.role;
+  const userId = state.auth.user?.id as string | undefined;
   if (!role && localStorage.getItem('foodieBuddyToken')) {
      // Still loading auth, wait
      throw new Error('Auth not loaded');
@@ -154,24 +243,42 @@ export const fetchAllOrders = createAsyncThunk('admin/fetchOrders', async (_, { 
   if (role === 'ROLE_CUSTOMER') endpoint = '/orders/my';
   else if (role === 'ROLE_CHEF') endpoint = '/kitchen/my-orders';
   else if (role === 'ROLE_DELIVERY') endpoint = '/delivery/my-orders';
-  const res = await apiClient.get(endpoint);
-  return res.data.data || res.data;
+  try {
+    const res = await apiClient.get(endpoint);
+    const apiData = Array.isArray(res.data.data || res.data) ? (res.data.data || res.data) : [];
+    const merged = mergeOrdersById(apiData.map(mapOrder), readOfflineOrders());
+    return filterOrdersForRole(merged, role, userId);
+  } catch (error: any) {
+    if (error?.response) throw error;
+    const mergedFallback = mergeOrdersById(FALLBACK_ORDERS, readOfflineOrders());
+    return filterOrdersForRole(mergedFallback, role, userId);
+  }
 });
 
 export const fetchAllUsers = createAsyncThunk('admin/fetchUsers', async (_, { getState }) => {
   const state = getState() as any;
   const role = state.auth.user?.role;
   if (role === 'ROLE_CUSTOMER' || role === 'ROLE_DELIVERY' || role === 'ROLE_CHEF') return []; // Only admin/manager need all users
-  const res = await apiClient.get('/admin/users');
-  return res.data.data || res.data;
+  try {
+    const res = await apiClient.get('/admin/users');
+    return res.data.data || res.data;
+  } catch (error: any) {
+    if (error?.response) throw error;
+    return FALLBACK_USERS;
+  }
 });
 
 export const fetchTransactions = createAsyncThunk('admin/fetchTransactions', async (_, { getState }) => {
   const state = getState() as any;
   const role = state.auth.user?.role;
   if (role !== 'ROLE_ADMIN' && role !== 'ROLE_MANAGER') return []; // Only admin/manager see financials
-  const res = await apiClient.get('/admin/financials/transactions');
-  return res.data.data || res.data;
+  try {
+    const res = await apiClient.get('/admin/financials/transactions');
+    return res.data.data || res.data;
+  } catch (error: any) {
+    if (error?.response) throw error;
+    return FALLBACK_TRANSACTIONS;
+  }
 });
 
 export const fetchDashboardStats = createAsyncThunk('admin/fetchDashboard', async () => {
@@ -283,39 +390,59 @@ export const updateLeavesApi = createAsyncThunk('admin/updateLeaves', async ({ i
   }
 });
 
-export const assignChefApi = createAsyncThunk('admin/assignChef', async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState }) => {
+export const assignChefApi = createAsyncThunk(
+  'admin/assignChef',
+  async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState, rejectWithValue }) => {
   try {
     const res = await apiClient.put(`/admin/orders/${orderId}/assign-chef/${userId}`);
     return res.data.data || res.data;
-  } catch {
+  } catch (error: any) {
+    if (isHttpError(error)) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
     const state = getState() as any;
     const order = state.admin.orders.find((o: any) => o.id === orderId);
-    if (order) return { ...order, assignedChefId: userId, assignedChefName: userName };
-    throw new Error('Order not found');
+    if (order) {
+      const updated = mapOrder({ ...order, assignedChefId: userId, assignedChefName: userName });
+      upsertOfflineOrder(updated);
+      return updated;
+    }
+    return rejectWithValue('Order not found');
   }
 });
 
-export const assignDeliveryApi = createAsyncThunk('admin/assignDelivery', async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState }) => {
+export const assignDeliveryApi = createAsyncThunk(
+  'admin/assignDelivery',
+  async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState, rejectWithValue }) => {
   try {
     const res = await apiClient.put(`/admin/orders/${orderId}/assign-delivery/${userId}`);
     return res.data.data || res.data;
-  } catch {
+  } catch (error: any) {
+    if (isHttpError(error)) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
     const state = getState() as any;
     const order = state.admin.orders.find((o: any) => o.id === orderId);
-    if (order) return { ...order, assignedDeliveryId: userId, assignedDeliveryName: userName };
-    throw new Error('Order not found');
+    if (order) {
+      const updated = mapOrder({ ...order, assignedDeliveryId: userId, assignedDeliveryName: userName });
+      upsertOfflineOrder(updated);
+      return updated;
+    }
+    return rejectWithValue('Order not found');
   }
 });
 
-export const updateOrderStatusApi = createAsyncThunk('admin/updateOrderStatus', async ({ id, status }: { id: string; status: string }, { getState }) => {
+export const updateOrderStatusApi = createAsyncThunk(
+  'admin/updateOrderStatus',
+  async ({ id, status }: { id: string; status: string }, { getState, rejectWithValue }) => {
   // Route to the correct backend endpoint based on target status
   const endpointMap: Record<string, string> = {
     'CONFIRMED': `/admin/orders/${id}/confirm`,
     'CANCELLED': `/admin/orders/${id}/cancel`,
     'PREPARING': `/kitchen/start/${id}`,
     'READY': `/kitchen/ready/${id}`,
+    'OUT_FOR_DELIVERY': `/delivery/start/${id}`,
     'PICKED_UP': `/delivery/pickup/${id}`,
-    'OUT_FOR_DELIVERY': `/delivery/pickup/${id}`,
     'DELIVERED': `/delivery/deliver/${id}`,
   };
 
@@ -329,36 +456,130 @@ export const updateOrderStatusApi = createAsyncThunk('admin/updateOrderStatus', 
     // Fallback for unknown statuses
     const res = await apiClient.put(`/admin/orders/${id}/status`, { status });
     return res.data.data || res.data;
-  } catch {
+  } catch (error: any) {
+    if (isHttpError(error)) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
     // Fallback: update locally when backend is unreachable
     const state = getState() as any;
     const order = state.admin.orders.find((o: any) => o.id === id);
-    if (order) return { ...order, status };
-    throw new Error('Order not found');
+    if (order) {
+      const updated = mapOrder({ ...order, status });
+      upsertOfflineOrder(updated);
+      return updated;
+    }
+    return rejectWithValue('Order not found');
   }
 });
 
-export const placeOrderApi = createAsyncThunk('admin/placeOrder', async (orderData: any) => {
+export const placeOrderApi = createAsyncThunk(
+  'admin/placeOrder',
+  async (orderData: any, { getState, rejectWithValue }) => {
   try {
-    const res = await apiClient.post('/orders/place', orderData);
+    const state = getState() as any;
+    const token = localStorage.getItem('foodieBuddyToken');
+    if (token === 'fallback-token') {
+      try {
+        // If backend is reachable but user is still on fallback token, force re-login for real DB writes.
+        await apiClient.get('/menu');
+        return rejectWithValue('You are in offline/demo login. Sign out and login again to place real DB orders.');
+      } catch (tokenCheckError: any) {
+        if (tokenCheckError?.response) {
+          return rejectWithValue('You are in offline/demo login. Sign out and login again to place real DB orders.');
+        }
+        // Backend is unreachable, allow offline fallback order creation below.
+      }
+    }
+
+    let payload = { ...orderData };
+    const incomingItems = Array.isArray(orderData?.items) ? orderData.items : [];
+    const hasFallbackIds = incomingItems.some((item: any) => isFallbackMenuId(item?.menuItemId));
+
+    // If cart contains old fallback IDs (m1, m2, ...), remap them to real backend menu IDs by item name.
+    if (hasFallbackIds) {
+      const cartItems = (state.cart.items || []) as Array<{ id: string; name: string }>;
+      const liveMenuRes = await apiClient.get('/menu');
+      const liveMenu = Array.isArray(liveMenuRes.data?.data || liveMenuRes.data) ? (liveMenuRes.data?.data || liveMenuRes.data) : [];
+      const liveMenuByName = new Map<string, any>();
+      liveMenu.forEach((item: any) => {
+        if (item?.name) liveMenuByName.set(String(item.name).trim().toLowerCase(), item);
+      });
+
+      const remappedItems = incomingItems.map((item: any) => {
+        if (!isFallbackMenuId(item?.menuItemId)) return item;
+        const cartItem = cartItems.find((c) => c.id === item.menuItemId);
+        const lookupName = cartItem?.name?.trim().toLowerCase();
+        const liveMatch = lookupName ? liveMenuByName.get(lookupName) : undefined;
+        if (liveMatch?.id) {
+          return { ...item, menuItemId: liveMatch.id };
+        }
+        return item;
+      });
+      const unresolvedFallbackItems = remappedItems.some((item: any) => isFallbackMenuId(item?.menuItemId));
+      if (unresolvedFallbackItems) {
+        return rejectWithValue('Some cart items are outdated. Clear cart and add items again.');
+      }
+      payload = { ...payload, items: remappedItems };
+    }
+
+    const res = await apiClient.post('/orders/place', payload);
     return res.data.data || res.data;
-  } catch {
+  } catch (error: any) {
+    // If backend responded with an explicit error, don't fake a successful order.
+    if (error?.response) {
+      const status = error.response.status;
+      const message = getApiErrorMessage(error);
+      if (status === 401 || status === 403) {
+        return rejectWithValue('Session expired or invalid. Please sign out and login again.');
+      }
+      return rejectWithValue(message || 'Failed to place order.');
+    }
+    const state = getState() as any;
+    const currentUser = state.auth.user;
+    const cartItems = (state.cart.items || []) as Array<{ id: string; name: string; quantity: number; price: number }>;
+    const menuMap = new Map<string, MenuItem>(
+      ((state.admin.menuItems || []) as MenuItem[]).map((item) => [item.id, item])
+    );
+    const mappedItems = Array.isArray(orderData.items)
+      ? orderData.items.map((item: { menuItemId: string; quantity: number }) => {
+          const cartItem = cartItems.find((c) => c.id === item.menuItemId);
+          const menuItem = menuMap.get(item.menuItemId);
+          const quantity = Number(item.quantity) || 1;
+          const unitPrice = Number(cartItem?.price ?? menuItem?.price ?? 0);
+          return {
+            menuItemId: item.menuItemId,
+            menuItemName: cartItem?.name || menuItem?.name || 'Menu Item',
+            quantity,
+            unitPrice,
+            totalPrice: unitPrice * quantity,
+          };
+        })
+      : [];
+    const subtotal = mappedItems.reduce((sum: number, item: { menuItemId: string; menuItemName: string; quantity: number; unitPrice: number; totalPrice: number }) => sum + item.totalPrice, 0);
+    const deliveryFee = Number(state.location?.deliveryFee ?? 0);
+    const totalAmount = subtotal + deliveryFee;
+
     // Fallback if backend is down
-    const mockOrder = {
+    const mockOrder: OrderData = {
       id: `ORD-${Date.now().toString().slice(-4)}`,
-      customerId: orderData.customerPhone || 'U1',
-      customerName: 'Guest User',
+      customerId: currentUser?.id || orderData.customerPhone || 'U1',
+      customerName: currentUser?.name || 'Guest User',
       status: 'PLACED',
-      charge: 500, // Dummy fallback value since price is calculated backend-side
-      profit: 100,
+      charge: totalAmount || subtotal || 0,
+      profit: Math.max(Math.round((totalAmount || subtotal || 0) * 0.2), 0),
       deliveryAddress: orderData.customerAddress,
       assignedChefId: '',
       assignedChefName: '',
       assignedDeliveryId: '',
       assignedDeliveryName: '',
       manager: '',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
+      subtotal,
+      deliveryFee,
+      totalAmount,
+      items: mappedItems,
     };
+    upsertOfflineOrder(mockOrder);
     return mockOrder;
   }
 });
@@ -372,13 +593,15 @@ export const rateOrderApi = createAsyncThunk('admin/rateOrder', async ({ orderId
     const state = getState() as any;
     const order = state.admin.orders.find((o: any) => o.id === orderId);
     if (order) {
-      return { 
+      const updated = mapOrder({
         ...order, 
         isRated: true, 
         deliveryRating, 
         foodRating,
         orderRating: Math.round((deliveryRating + foodRating) / 2)
-      };
+      });
+      upsertOfflineOrder(updated);
+      return updated;
     }
     throw new Error('Order not found');
   }
@@ -516,32 +739,28 @@ export const adminSlice = createSlice({
     // ===== Individual fetch handlers =====
     builder.addCase(fetchAllMenu.fulfilled, (state, action) => {
       const data = action.payload || [];
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         state.menuItems = data.map(mapMenuItem);
       }
     });
 
     builder.addCase(fetchAllOrders.fulfilled, (state, action) => {
       const data = action.payload || [];
-      if (Array.isArray(data) && data.length > 0) {
-        const apiOrders = data.map(mapOrder);
-        const apiOrderIds = new Set(apiOrders.map(o => o.id));
-        // Keep any locally-placed orders (fallback mock orders) that aren't in the API response
-        const localOnlyOrders = state.orders.filter(o => !apiOrderIds.has(o.id) && o.status === 'PLACED');
-        state.orders = [...localOnlyOrders, ...apiOrders];
+      if (Array.isArray(data)) {
+        state.orders = data.map(mapOrder);
       }
     });
 
     builder.addCase(fetchAllUsers.fulfilled, (state, action) => {
       const data = action.payload || [];
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         state.users = data.map(mapUser);
       }
     });
 
     builder.addCase(fetchTransactions.fulfilled, (state, action) => {
       const data = action.payload || [];
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         state.transactions = data.map(mapTransaction);
         state.totalBalance = calcBalance(state.transactions);
       }

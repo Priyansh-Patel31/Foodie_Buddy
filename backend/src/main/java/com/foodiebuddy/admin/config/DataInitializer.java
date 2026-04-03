@@ -34,8 +34,32 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.count() > 0) {
+        log.info("Checking database for initialization...");
+
+        if (userRepository.count() > 0 && menuItemRepository.count() > 0) {
             log.info("Data already initialized, skipping...");
+            return;
+        }
+
+        if (userRepository.count() == 0) {
+            log.info("Users not found. Initializing users...");
+            seedUsers();
+        } else {
+            // Load existing seed users for order reference
+            adminUser = userRepository.findByEmail("admin@foodie.com").orElse(null);
+            userRepository.findByEmail("manager@foodie.com").orElse(null);
+            userRepository.findByEmail("chef@foodie.com").orElse(null);
+            userRepository.findByEmail("delivery@foodie.com").orElse(null);
+            customerHappy = userRepository.findByEmail("customer@foodie.com").orElse(null);
+            customerPriya = userRepository.findByEmail("priya@gmail.com").orElse(null);
+            customerAmit = userRepository.findByEmail("alice@foodie.com").orElse(null);
+            customerSneha = userRepository.findByEmail("sneha@yahoo.com").orElse(null);
+            customerRaj = userRepository.findByEmail("raj@outlook.com").orElse(null);
+            customerTom = userRepository.findByEmail("tom@movie.com").orElse(null);
+        }
+
+        if (menuItemRepository.count() > 0) {
+            log.info("Menu data already exists. Skipping menu initialization.");
             return;
         }
 

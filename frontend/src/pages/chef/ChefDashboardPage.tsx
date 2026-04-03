@@ -13,6 +13,7 @@ export default function ChefDashboardPage() {
 
   // Poll for new orders every 10 seconds (reflects manager assignments in real-time)
   useEffect(() => {
+    dispatch(fetchAllOrders());
     const interval = setInterval(() => {
       dispatch(fetchAllOrders());
     }, 10000);
@@ -21,6 +22,7 @@ export default function ChefDashboardPage() {
 
   const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null);
   const [historyDate, setHistoryDate] = useState(new Date());
+  const [processingOrderIds, setProcessingOrderIds] = useState<Record<string, boolean>>({});
 
   // ========== NOTIFICATION SYSTEM ==========
   const prevPendingCountRef = useRef(0);
@@ -62,17 +64,33 @@ export default function ChefDashboardPage() {
 
   // ========== ACTIONS ==========
   const handleAccept = (orderId: string) => {
+    if (processingOrderIds[orderId]) return;
+    setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
     dispatch(updateOrderStatusApi({ id: orderId, status: 'PREPARING' }))
       .unwrap()
-      .then(() => toast.success(`Order ${orderId} accepted! Now preparing.`))
-      .catch(() => toast.error('Failed to accept order.'));
+      .then(() => {
+        toast.success(`Order ${orderId} accepted! Now preparing.`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to accept order.'))
+      .finally(() => {
+        setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
   };
 
   const handleMarkReady = (orderId: string) => {
+    if (processingOrderIds[orderId]) return;
+    setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
     dispatch(updateOrderStatusApi({ id: orderId, status: 'READY' }))
       .unwrap()
-      .then(() => toast.success(`Order ${orderId} marked as READY for dispatch!`))
-      .catch(() => toast.error('Failed to update order status.'));
+      .then(() => {
+        toast.success(`Order ${orderId} marked as READY for dispatch!`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to update order status.'))
+      .finally(() => {
+        setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
   };
 
   // ========== HISTORY ==========
@@ -215,9 +233,10 @@ export default function ChefDashboardPage() {
                 <div className="p-4 border-t border-yellow-100">
                   <button
                     onClick={e => { e.stopPropagation(); handleAccept(order.id); }}
-                    className="w-full btn-glass-primary py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                    disabled={Boolean(processingOrderIds[order.id])}
+                    className="w-full btn-glass-primary py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <CheckCircle2 size={16} /> Accept Order
+                    <CheckCircle2 size={16} /> {processingOrderIds[order.id] ? 'Accepting...' : 'Accept Order'}
                   </button>
                 </div>
               </div>
@@ -282,9 +301,10 @@ export default function ChefDashboardPage() {
                 <div className="p-4 bg-white/10 border-t border-white/10">
                   <button
                     onClick={e => { e.stopPropagation(); handleMarkReady(order.id); }}
-                    className="w-full bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                    disabled={Boolean(processingOrderIds[order.id])}
+                    className="w-full bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Package size={16} /> Mark as Ready
+                    <Package size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Mark as Ready'}
                   </button>
                 </div>
               </div>

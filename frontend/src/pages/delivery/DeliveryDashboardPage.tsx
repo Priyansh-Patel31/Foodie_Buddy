@@ -15,6 +15,7 @@ export default function DeliveryDashboardPage() {
 
   // Poll for new orders every 10 seconds (reflects manager/chef updates in real-time)
   useEffect(() => {
+    dispatch(fetchAllOrders());
     const interval = setInterval(() => {
       dispatch(fetchAllOrders());
     }, 10000);
@@ -23,6 +24,7 @@ export default function DeliveryDashboardPage() {
 
   const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null);
   const [historyDate, setHistoryDate] = useState(new Date());
+  const [processingOrderIds, setProcessingOrderIds] = useState<Record<string, boolean>>({});
 
   // ========== NOTIFICATION SYSTEM ==========
   const prevWaitingCountRef = useRef(0);
@@ -61,17 +63,33 @@ export default function DeliveryDashboardPage() {
 
   // ========== ACTIONS ==========
   const handleAcceptPickup = (orderId: string) => {
+    if (processingOrderIds[orderId]) return;
+    setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
     dispatch(updateOrderStatusApi({ id: orderId, status: 'OUT_FOR_DELIVERY' }))
       .unwrap()
-      .then(() => toast.success(`Order ${orderId} accepted! Heading to pick up.`))
-      .catch(() => toast.error('Failed to accept delivery.'));
+      .then(() => {
+        toast.success(`Order ${orderId} accepted! Out for delivery now.`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to accept delivery.'))
+      .finally(() => {
+        setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
   };
 
   const handleConfirmDelivery = (orderId: string) => {
+    if (processingOrderIds[orderId]) return;
+    setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
     dispatch(updateOrderStatusApi({ id: orderId, status: 'DELIVERED' }))
       .unwrap()
-      .then(() => toast.success(`Order ${orderId} delivered successfully! 🎉`))
-      .catch(() => toast.error('Failed to confirm delivery.'));
+      .then(() => {
+        toast.success(`Order ${orderId} delivered successfully!`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to confirm delivery.'))
+      .finally(() => {
+        setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
   };
 
   // ========== HISTORY ==========
@@ -265,9 +283,10 @@ export default function DeliveryDashboardPage() {
                 <div className="p-4 border-t border-blue-100">
                   <button
                     onClick={e => { e.stopPropagation(); handleAcceptPickup(order.id); }}
-                    className="w-full btn-glass-primary py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                    disabled={Boolean(processingOrderIds[order.id])}
+                    className="w-full btn-glass-primary py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Package size={16} /> Accept & Pick Up
+                    <Package size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Accept & Pick Up'}
                   </button>
                 </div>
               </div>
@@ -354,9 +373,10 @@ export default function DeliveryDashboardPage() {
                   <div className="flex items-center justify-end">
                     <button
                       onClick={e => { e.stopPropagation(); handleConfirmDelivery(order.id); }}
-                      className="bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all shadow-lg flex items-center gap-2"
+                      disabled={Boolean(processingOrderIds[order.id])}
+                      className="bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle2 size={16} /> Confirm Delivery
+                      <CheckCircle2 size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Confirm Delivery'}
                     </button>
                   </div>
                 </div>
@@ -446,3 +466,4 @@ export default function DeliveryDashboardPage() {
     </div>
   );
 }
+

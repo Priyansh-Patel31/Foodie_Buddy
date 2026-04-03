@@ -1,7 +1,7 @@
 package com.foodiebuddy.admin.controller;
 
 import com.foodiebuddy.admin.dto.*;
-import com.foodiebuddy.admin.entity.enums.OrderStatus;
+import com.foodiebuddy.admin.exception.BadRequestException;
 import com.foodiebuddy.admin.security.JwtTokenProvider;
 import com.foodiebuddy.admin.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,18 +37,27 @@ public class KitchenController {
 
     @PutMapping("/start/{orderId}")
     @Operation(summary = "Start cooking an order")
-    public ResponseEntity<ApiResponse<OrderDTO>> startCooking(@PathVariable String orderId) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.updateStatus(orderId, OrderStatus.PREPARING)));
+    public ResponseEntity<ApiResponse<OrderDTO>> startCooking(@PathVariable String orderId, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.startCooking(orderId, userId)));
     }
 
     @PutMapping("/ready/{orderId}")
     @Operation(summary = "Mark order as ready")
-    public ResponseEntity<ApiResponse<OrderDTO>> markReady(@PathVariable String orderId) {
-        return ResponseEntity.ok(ApiResponse.success(orderService.updateStatus(orderId, OrderStatus.READY)));
+    public ResponseEntity<ApiResponse<OrderDTO>> markReady(@PathVariable String orderId, HttpServletRequest httpRequest) {
+        String userId = extractUserId(httpRequest);
+        return ResponseEntity.ok(ApiResponse.success(orderService.markReady(orderId, userId)));
     }
 
     private String extractUserId(HttpServletRequest request) {
-        String token = request.getHeader("Authorization").substring(7);
-        return tokenProvider.getUserIdFromToken(token);
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ") || authHeader.length() <= 7) {
+            throw new BadRequestException("Missing or invalid Authorization header");
+        }
+        try {
+            return tokenProvider.getUserIdFromToken(authHeader.substring(7));
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid authentication token");
+        }
     }
 }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -17,22 +18,41 @@ public class WebSocketNotificationService {
      * Broadcast new order to manager/kitchen dashboards
      */
     public void notifyNewOrder(Order order) {
-        messagingTemplate.convertAndSend("/topic/orders", order);
-        messagingTemplate.convertAndSend("/topic/kitchen", order);
-        log.info("WebSocket: New order notification sent for order {}", order.getId());
+        if (order == null) {
+            log.warn("WebSocket: Skipping new-order notification because order payload is null");
+            return;
+        }
+        try {
+            messagingTemplate.convertAndSend("/topic/orders", order);
+            messagingTemplate.convertAndSend("/topic/kitchen", order);
+            log.info("WebSocket: New order notification sent for order {}", order.getId());
+        } catch (Exception ex) {
+            log.error("WebSocket: Failed to publish new-order notification for {}", order.getId(), ex);
+        }
     }
 
     /**
      * Broadcast order status update to all relevant subscribers
      */
     public void notifyOrderUpdate(Order order) {
-        messagingTemplate.convertAndSend("/topic/orders", order);
-        messagingTemplate.convertAndSend("/topic/kitchen", order);
+        if (order == null) {
+            log.warn("WebSocket: Skipping order-update notification because order payload is null");
+            return;
+        }
+        try {
+            messagingTemplate.convertAndSend("/topic/orders", order);
+            messagingTemplate.convertAndSend("/topic/kitchen", order);
+        } catch (Exception ex) {
+            log.error("WebSocket: Failed to publish dashboard update for order {}", order.getId(), ex);
+        }
 
-        // Send to the specific customer's personal queue
-        if (order.getCustomerId() != null) {
-            messagingTemplate.convertAndSendToUser(
-                    order.getCustomerId(), "/queue/tracking", order);
+        String customerId = order.getCustomerId();
+        if (StringUtils.hasText(customerId)) {
+            try {
+                messagingTemplate.convertAndSendToUser(customerId, "/queue/tracking", order);
+            } catch (Exception ex) {
+                log.warn("WebSocket: Failed to publish customer tracking update for order {}", order.getId(), ex);
+            }
         }
 
         log.info("WebSocket: Order {} status updated to {}", order.getId(), order.getStatus());

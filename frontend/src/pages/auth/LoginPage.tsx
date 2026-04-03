@@ -65,26 +65,33 @@ export default function LoginPage() {
         dispatch(fetchAdminData());
         toast.success(`Welcome back, ${loginData.name}!`);
       }
-    } catch {
-      // Backend is not running — use FALLBACK login
-      const fallbackAccount = QUICK_ACCOUNTS.find(a => a.email === email && a.password === password);
-      
-      if (fallbackAccount) {
-        dispatch(loginSuccess({
-          user: {
-            id: `fallback-${Date.now()}`,
-            name: fallbackAccount.name,
-            email: fallbackAccount.email,
-            role: fallbackAccount.role as UserRole,
-          },
-          token: 'fallback-token',
-        }));
-
-        // Load fallback dummy data
-        dispatch(fetchAdminData());
-        toast.success(`Welcome, ${fallbackAccount.name}! (Offline Mode — Dummy Data)`);
+    } catch (error: any) {
+      if (error?.response) {
+        const message =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Login failed. Please try again.';
+        toast.error(message);
       } else {
-        toast.error('Invalid credentials. Use one of the quick login accounts below.');
+        const fallbackAccount = QUICK_ACCOUNTS.find(a => a.email === email && a.password === password);
+        
+        if (fallbackAccount) {
+          dispatch(loginSuccess({
+            user: {
+              id: `fallback-${Date.now()}`,
+              name: fallbackAccount.name,
+              email: fallbackAccount.email,
+              role: fallbackAccount.role as UserRole,
+            },
+            token: 'fallback-token',
+          }));
+
+          dispatch(fetchAdminData());
+          toast.success(`Welcome, ${fallbackAccount.name}! (Offline Mode — Dummy Data)`);
+        } else {
+          toast.error('Invalid credentials. Use one of the quick login accounts below.');
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -149,7 +156,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-10 pr-10 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow bg-white/50"
-                  placeholder="••••••••"
+                  placeholder="********"
                   required
                   disabled={isSubmitting}
                 />

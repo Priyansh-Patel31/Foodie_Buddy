@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 export default function CheckoutPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [placingOrder, setPlacingOrder] = useState(false);
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { items, subtotal } = useAppSelector(state => state.cart);
@@ -36,6 +37,8 @@ export default function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
+    if (placingOrder) return;
+    setPlacingOrder(true);
     toast.loading('Processing your order...', { id: 'checkout' });
     
     try {
@@ -64,12 +67,24 @@ export default function CheckoutPage() {
         toast.success('Order placed successfully!', { id: 'checkout-success' });
         navigate(`/order-tracking/${orderId}`);
       } else {
+        const message =
+          (typeof resultAction.payload === 'string' && resultAction.payload) ||
+          resultAction.error?.message ||
+          'Failed to place order.';
         toast.dismiss('checkout');
-        toast.error('Failed to place order.');
+        toast.error(message);
+        if (
+          message.toLowerCase().includes('session') ||
+          message.toLowerCase().includes('offline/demo login')
+        ) {
+          setTimeout(() => navigate('/login'), 900);
+        }
       }
     } catch (e) {
       toast.dismiss('checkout');
       toast.error('Something went wrong.');
+    } finally {
+      setPlacingOrder(false);
     }
   };
 
@@ -220,9 +235,14 @@ export default function CheckoutPage() {
             </button>
             <button 
               onClick={handlePlaceOrder}
-              className="flex-1 bg-primary-600 text-white font-bold py-3.5 rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-500/30"
+              disabled={placingOrder}
+              className={`flex-1 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-primary-500/30 ${
+                placingOrder
+                  ? 'bg-primary-400 cursor-not-allowed'
+                  : 'bg-primary-600 hover:bg-primary-700'
+              }`}
             >
-              Place Order
+              {placingOrder ? 'Placing...' : 'Place Order'}
             </button>
           </div>
         </div>
