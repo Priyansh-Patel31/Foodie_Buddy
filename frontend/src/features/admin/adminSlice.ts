@@ -2,6 +2,11 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../../api/apiClient';
 
 // ========================== TYPES ==========================
+export interface Topping {
+  name: string;
+  price: number;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -12,7 +17,7 @@ export interface MenuItem {
   imageUrl: string;
   isAvailable: boolean;
   isVegetarian: boolean;
-  toppings: any[];
+  toppings: Topping[];
 }
 
 export interface OrderData {

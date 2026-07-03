@@ -9,14 +9,14 @@ import AnimatedLogo from '../../components/common/AnimatedLogo';
 import { Mail, Lock, ArrowRight, ShieldCheck, ChefHat, Users, Truck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Fallback accounts for when backend is down
 const QUICK_ACCOUNTS = [
-  { email: 'admin@foodie.com', password: 'password', role: ROLES.ADMIN, name: 'Admin User', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { email: 'manager@foodie.com', password: 'password', role: ROLES.MANAGER, name: 'Restaurant Manager', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { email: 'chef@foodie.com', password: 'password', role: ROLES.CHEF, name: 'Head Chef', icon: ChefHat, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-  { email: 'delivery@foodie.com', password: 'password', role: ROLES.DELIVERY, name: 'Delivery Partner', icon: Truck, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { email: 'customer@foodie.com', password: 'password', role: ROLES.CUSTOMER, name: 'Happy Customer', icon: Mail, color: 'text-primary-500', bg: 'bg-primary-500/10' },
+  { email: 'admin@foodie.com', password: 'Admin@123', role: ROLES.ADMIN, name: 'Admin', icon: ShieldCheck, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { email: 'manager@foodie.com', password: 'Manager@123', role: ROLES.MANAGER, name: 'Manager', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { email: 'kitchen@foodie.com', password: 'Kitchen@123', role: ROLES.CHEF, name: 'Kitchen', icon: ChefHat, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { email: 'delivery@foodie.com', password: 'Delivery@123', role: ROLES.DELIVERY, name: 'Delivery', icon: Truck, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { email: 'staff@foodie.com', password: 'Staff@123', role: ROLES.WAITER, name: 'Staff', icon: Users, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
 ];
+const customerRegistrationEnabled = import.meta.env.VITE_CUSTOMER_REGISTRATION_ENABLED !== 'false';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -35,6 +35,7 @@ export default function LoginPage() {
       else if (userRole === ROLES.MANAGER) navigate('/manager');
       else if (userRole === ROLES.CHEF) navigate('/kitchen');
       else if (userRole === ROLES.DELIVERY) navigate('/delivery');
+      else if (userRole === ROLES.WAITER || userRole === ROLES.CLEANER) navigate('/profile');
       else navigate('/dashboard');
     }
   }, [isAuthenticated, userRole, navigate]);
@@ -51,7 +52,6 @@ export default function LoginPage() {
 
       if (loginData) {
         localStorage.setItem('foodieBuddyToken', loginData.token);
-        
         dispatch(loginSuccess({
           user: {
             id: loginData.userId,
@@ -74,24 +74,7 @@ export default function LoginPage() {
           'Login failed. Please try again.';
         toast.error(message);
       } else {
-        const fallbackAccount = QUICK_ACCOUNTS.find(a => a.email === email && a.password === password);
-        
-        if (fallbackAccount) {
-          dispatch(loginSuccess({
-            user: {
-              id: `fallback-${Date.now()}`,
-              name: fallbackAccount.name,
-              email: fallbackAccount.email,
-              role: fallbackAccount.role as UserRole,
-            },
-            token: 'fallback-token',
-          }));
-
-          dispatch(fetchAdminData());
-          toast.success(`Welcome, ${fallbackAccount.name}! (Offline Mode — Dummy Data)`);
-        } else {
-          toast.error('Invalid credentials. Use one of the quick login accounts below.');
-        }
+        toast.error('Unable to reach the server. Please try again shortly.');
       }
     } finally {
       setIsSubmitting(false);
@@ -116,12 +99,14 @@ export default function LoginPage() {
         <h2 className="mt-2 text-center text-3xl font-black text-gray-900 font-outfit">
           Sign In to Your Account
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600 font-medium">
-          New to Foodie-Buddy?{' '}
-          <Link to="/register" className="font-bold text-primary-600 hover:text-primary-500 transition-colors">
-            Create an account
-          </Link>
-        </p>
+        {customerRegistrationEnabled && (
+          <p className="mt-2 text-center text-sm text-gray-600 font-medium">
+            Ordering for yourself?{' '}
+            <Link to="/register" className="font-bold text-primary-600 hover:text-primary-500 transition-colors">
+              Create a customer account
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
@@ -198,7 +183,7 @@ export default function LoginPage() {
           {/* Quick Login Accounts */}
           <div className="mt-8 pt-8 border-t border-gray-200/50">
             <h3 className="text-xs font-black text-gray-500 uppercase tracking-wider text-center mb-4">
-              Quick Login (One-Click Fill)
+              Demo Accounts
             </h3>
             <div className="grid grid-cols-2 gap-3">
               {QUICK_ACCOUNTS.map((acc) => (
@@ -213,7 +198,8 @@ export default function LoginPage() {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-gray-500 uppercase">{acc.role.replace('ROLE_', '')}</span>
-                    <span className="text-xs font-semibold text-gray-900 truncate">{acc.name}</span>
+                    <span className="text-[11px] font-semibold text-gray-900 truncate">{acc.email}</span>
+                    <span className="text-[10px] text-gray-500">{acc.password}</span>
                   </div>
                 </button>
               ))}

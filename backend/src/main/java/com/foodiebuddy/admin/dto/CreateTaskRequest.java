@@ -5,11 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class CreateTaskRequest {
-    @NotBlank
+    @NotBlank(message = "Task title is required")
     private String title;
     private String description;
-    @NotBlank
+    @NotBlank(message = "Task type is required")
     private String type; // CLEANING, SERVING, MAINTENANCE, OTHER
-    @NotBlank
+    @NotBlank(message = "Assigned user is required")
     private String assignedToUserId;
 }

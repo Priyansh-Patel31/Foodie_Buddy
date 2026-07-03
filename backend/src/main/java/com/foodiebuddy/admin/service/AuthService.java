@@ -5,6 +5,7 @@ import com.foodiebuddy.admin.entity.User;
 import com.foodiebuddy.admin.entity.enums.Role;
 import com.foodiebuddy.admin.entity.enums.UserStatus;
 import com.foodiebuddy.admin.exception.BadRequestException;
+import com.foodiebuddy.admin.exception.ConflictException;
 import com.foodiebuddy.admin.repository.UserRepository;
 import com.foodiebuddy.admin.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -22,18 +23,22 @@ public class AuthService {
     private final JwtTokenProvider tokenProvider;
 
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
+        String email = request.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid credentials"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadRequestException("Invalid email or password");
+            log.warn("Authentication failed for email {}", email);
+            throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
         }
 
         if (user.getStatus() == UserStatus.SUSPENDED) {
-            throw new BadRequestException("Account is suspended. Contact admin.");
+            log.warn("Authentication denied for suspended account {}", email);
+            throw new org.springframework.security.authentication.DisabledException("Account is suspended");
         }
 
         String token = tokenProvider.generateToken(user);
+        log.info("Authentication succeeded for user {} with role {}", email, user.getRole());
 
         return LoginResponse.builder()
                 .token(token)
@@ -45,13 +50,14 @@ public class AuthService {
     }
 
     public LoginResponse register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email is already registered");
         }
 
         User user = User.builder()
                 .name(request.getName())
-                .email(request.getEmail())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
                 .role(Role.ROLE_CUSTOMER)
@@ -72,8 +78,9 @@ public class AuthService {
     }
 
     public LoginResponse createStaff(CreateStaffRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email already registered");
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email is already registered");
         }
 
         Role role;
@@ -89,7 +96,7 @@ public class AuthService {
 
         User user = User.builder()
                 .name(request.getName())
-                .email(request.getEmail())
+                .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phone(request.getPhone())
                 .role(role)

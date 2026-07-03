@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import AnimatedLogo from '../../components/common/AnimatedLogo';
 import { User, Mail, Lock, Phone, MapPin, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import apiClient from '../../api/apiClient';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,23 +18,34 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match!');
       return;
     }
     
-    // Simulating backend signup integration
-    toast.success('Registration successful! Please login.');
-    setTimeout(() => {
+    setIsSubmitting(true);
+    try {
+      await apiClient.post('/auth/register', {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        password: formData.password,
+        phone: formData.mobile,
+      });
+      toast.success('Customer account created. Please sign in.');
       navigate('/login');
-    }, 1500);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Registration failed. Please check your details.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,9 +196,10 @@ export default function RegisterPage() {
 
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full mt-4 btn-glass-primary py-4 rounded-xl shadow-xl transition-all flex justify-center items-center gap-2 group relative overflow-hidden"
             >
-              Initialize Account <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              {isSubmitting ? 'Creating account…' : 'Create Customer Account'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </form>
         </div>

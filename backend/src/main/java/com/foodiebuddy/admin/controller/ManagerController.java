@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/manager")
@@ -39,7 +40,7 @@ public class ManagerController {
     @PostMapping("/tasks")
     @Operation(summary = "Create and assign a task")
     public ResponseEntity<ApiResponse<Task>> createTask(
-            @RequestBody CreateTaskRequest request, HttpServletRequest httpRequest) {
+            @Valid @RequestBody CreateTaskRequest request, HttpServletRequest httpRequest) {
         String managerId = extractUserId(httpRequest);
         return ResponseEntity.ok(ApiResponse.success("Task created", taskService.create(request, managerId)));
     }

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -26,7 +27,7 @@ public class OrderController {
     @PostMapping("/place")
     @Operation(summary = "Place a new order (Customer)")
     public ResponseEntity<ApiResponse<OrderDTO>> placeOrder(
-            @RequestBody PlaceOrderRequest request, HttpServletRequest httpRequest) {
+            @Valid @RequestBody PlaceOrderRequest request, HttpServletRequest httpRequest) {
         String userId = extractUserId(httpRequest);
         OrderDTO order = orderService.placeOrder(request, userId);
         return ResponseEntity.ok(ApiResponse.success("Order placed successfully", order));
@@ -49,7 +50,7 @@ public class OrderController {
     @Operation(summary = "Rate a delivered order (Customer)")
     public ResponseEntity<ApiResponse<OrderDTO>> rateOrder(
             @PathVariable String orderId,
-            @RequestBody RatingRequest request) {
+            @Valid @RequestBody RatingRequest request) {
         return ResponseEntity.ok(ApiResponse.success(orderService.rateOrder(orderId, request)));
     }
 

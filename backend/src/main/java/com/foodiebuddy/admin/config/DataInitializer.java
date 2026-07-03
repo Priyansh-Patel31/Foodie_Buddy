@@ -7,8 +7,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,6 +19,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.data-initialization.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -36,39 +40,14 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Checking database for initialization...");
 
-        if (userRepository.count() > 0 && menuItemRepository.count() > 0) {
-            log.info("Data already initialized, skipping...");
-            return;
-        }
-
-        if (userRepository.count() == 0) {
-            log.info("Users not found. Initializing users...");
-            seedUsers();
-        } else {
-            // Load existing seed users for order reference
-            adminUser = userRepository.findByEmail("admin@foodie.com").orElse(null);
-            userRepository.findByEmail("manager@foodie.com").orElse(null);
-            userRepository.findByEmail("chef@foodie.com").orElse(null);
-            userRepository.findByEmail("delivery@foodie.com").orElse(null);
-            customerHappy = userRepository.findByEmail("customer@foodie.com").orElse(null);
-            customerPriya = userRepository.findByEmail("priya@gmail.com").orElse(null);
-            customerAmit = userRepository.findByEmail("alice@foodie.com").orElse(null);
-            customerSneha = userRepository.findByEmail("sneha@yahoo.com").orElse(null);
-            customerRaj = userRepository.findByEmail("raj@outlook.com").orElse(null);
-            customerTom = userRepository.findByEmail("tom@movie.com").orElse(null);
-        }
-
-        if (menuItemRepository.count() > 0) {
-            log.info("Menu data already exists. Skipping menu initialization.");
-            return;
-        }
-
         log.info("Initializing seed data for single-restaurant ecosystem...");
 
         // 1. Restaurant Config
-        RestaurantConfig config = RestaurantConfig.defaultConfig();
-        configRepository.save(config);
-        log.info("Restaurant config created: {}", config.getName());
+        if (configRepository.count() == 0) {
+            RestaurantConfig config = RestaurantConfig.defaultConfig();
+            configRepository.save(config);
+            log.info("Restaurant config created: {}", config.getName());
+        }
 
         // 2. Create Users (Admin + Staff + Customers)
         seedUsers();
@@ -149,32 +128,28 @@ public class DataInitializer implements CommandLineRunner {
                 List.of(new IngredientRequirement(milk.getId(), "Milk", 0.1)));
 
         // 6. Seed Orders
-        seedOrders();
+        if (orderRepository.count() == 0) {
+            seedOrders();
+        }
 
         // 7. Seed Financial Transactions
         seedTransactions();
 
-        log.info("=========================================================");
-        log.info("Seed data initialized successfully!");
-        log.info("=========================================================");
-        log.info("ADMIN LOGIN:    admin@foodie.com / password");
-        log.info("MANAGER LOGIN:  manager@foodie.com / password");
-        log.info("CHEF LOGIN:     chef@foodie.com / password");
-        log.info("DELIVERY LOGIN: delivery@foodie.com / password");
-        log.info("CUSTOMER LOGIN: customer@foodie.com / password");
-        log.info("=========================================================");
+        log.info("Seed data verification completed successfully");
     }
 
     // ========================== USERS ==========================
     private void seedUsers() {
-        adminUser = createStaff("Admin User", "admin@foodie.com", "password", Role.ROLE_ADMIN,
+        adminUser = createStaff("Admin User", "admin@foodie.com", "Admin@123", Role.ROLE_ADMIN,
                 new BigDecimal("80000"), 0);
-        managerUser = createStaff("Restaurant Manager", "manager@foodie.com", "password", Role.ROLE_MANAGER,
+        managerUser = createStaff("Restaurant Manager", "manager@foodie.com", "Manager@123", Role.ROLE_MANAGER,
                 new BigDecimal("60000"), 1);
-        chefUser = createStaff("Head Chef", "chef@foodie.com", "password", Role.ROLE_CHEF,
+        chefUser = createStaff("Kitchen Staff", "kitchen@foodie.com", "Kitchen@123", Role.ROLE_CHEF,
                 new BigDecimal("50000"), 4);
-        deliveryUser = createStaff("Delivery Partner", "delivery@foodie.com", "password", Role.ROLE_DELIVERY,
+        deliveryUser = createStaff("Delivery Partner", "delivery@foodie.com", "Delivery@123", Role.ROLE_DELIVERY,
                 new BigDecimal("25000"), 2);
+        createStaff("Restaurant Staff", "staff@foodie.com", "Staff@123", Role.ROLE_WAITER,
+                new BigDecimal("30000"), 0);
         createStaff("Sous Chef", "souschef@foodie.com", "password", Role.ROLE_CHEF,
                 new BigDecimal("35000"), 1);
         createStaff("Rider Two", "rider2@foodie.com", "password", Role.ROLE_DELIVERY,
@@ -264,14 +239,22 @@ public class DataInitializer implements CommandLineRunner {
         );
 
         for (FinancialTransaction txn : txns) {
-            mongoTemplate.save(txn);
+            Query query = Query.query(Criteria.where("transactionType").is(txn.getTransactionType())
+                    .and("description").is(txn.getDescription())
+                    .and("transactionDate").is(txn.getTransactionDate()));
+            if (!mongoTemplate.exists(query, FinancialTransaction.class)) {
+                mongoTemplate.save(txn);
+            }
         }
-        log.info("Seeded {} financial transactions.", txns.size());
+        log.info("Financial transaction seed data verified.");
     }
 
     // ========================== HELPERS ==========================
     private User createStaff(String name, String email, String password, Role role,
                              BigDecimal baseSalary, int leavesTaken) {
+        if (userRepository.existsByEmail(email)) {
+            return userRepository.findByEmail(email).orElseThrow();
+        }
         User u = User.builder()
                 .name(name).email(email)
                 .password(passwordEncoder.encode(password))
@@ -285,6 +268,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private User createCustomer(String name, String email, String password, String phone,
                                 Double lat, Double lng) {
+        if (userRepository.existsByEmail(email)) {
+            return userRepository.findByEmail(email).orElseThrow();
+        }
         User u = User.builder()
                 .name(name).email(email)
                 .password(passwordEncoder.encode(password))
@@ -300,12 +286,16 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private Category createCategory(String name, int order) {
+        var existing = categoryRepository.findByName(name);
+        if (existing.isPresent()) return existing.get();
         Category c = Category.builder().name(name).displayOrder(order).active(true).build();
         c.onCreate();
         return categoryRepository.save(c);
     }
 
     private Inventory createInventory(String name, String unit, Double stock, Double threshold) {
+        var existing = inventoryRepository.findByName(name);
+        if (existing.isPresent()) return existing.get();
         Inventory i = Inventory.builder()
                 .name(name).unit(unit)
                 .currentStock(stock).lowStockThreshold(threshold)
@@ -317,6 +307,7 @@ public class DataInitializer implements CommandLineRunner {
     private void createMenuItem(String name, String desc, BigDecimal price,
                                 String catId, String catName, boolean isVeg,
                                 String imageUrl, List<IngredientRequirement> ingredients) {
+        if (menuItemRepository.findByName(name).isPresent()) return;
         MenuItem m = MenuItem.builder()
                 .name(name).description(desc).price(price)
                 .categoryId(catId).categoryName(catName)

@@ -53,7 +53,7 @@ spring.data.mongodb.uri=mongodb://localhost:27017/food_admin
 spring.data.mongodb.auto-index-creation=true
 
 # JWT Configuration
-jwt.secret=9B948332E90124FD6F8BA06733224B27AE2DFFDAAD6A0D523C641DC5E21B90FE5ECC4ECBC7D01FA9706C8B4C02506EA9C394A790F3BFF61266B3EB6AAAEBA1BE
+jwt.secret=${JWT_SECRET}
 jwt.expiration=86400000  # 24 hours in milliseconds
 
 # Swagger/OpenAPI

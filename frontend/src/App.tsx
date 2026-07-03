@@ -45,6 +45,7 @@ import DeliveryDashboardPage from './pages/delivery/DeliveryDashboardPage';
 import ProfileAttendancePage from './pages/shared/ProfileAttendancePage';
 
 function App() {
+  const customerRegistrationEnabled = import.meta.env.VITE_CUSTOMER_REGISTRATION_ENABLED !== 'false';
   return (
     <Router>
       <Toaster position="top-right" toastOptions={{
@@ -61,7 +62,7 @@ function App() {
         
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register" element={customerRegistrationEnabled ? <RegisterPage /> : <Navigate to="/login" replace />} />
 
         {/* Protected Dashboard Routes */}
         {/* Admin Routes */}
@@ -98,7 +99,7 @@ function App() {
         </Route>
 
         {/* Shared Staff Profile / Attendance */}
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.DELIVERY]}><DashboardLayout /></ProtectedRoute>}>
+        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MANAGER, ROLES.CHEF, ROLES.DELIVERY, ROLES.WAITER, ROLES.CLEANER]}><DashboardLayout /></ProtectedRoute>}>
           <Route path="/profile" element={<ProfileAttendancePage />} />
           <Route path="/profile/:id" element={<ProfileAttendancePage />} />
         </Route>
@@ -111,4 +112,3 @@ function App() {
 }
 
 export default App;
-

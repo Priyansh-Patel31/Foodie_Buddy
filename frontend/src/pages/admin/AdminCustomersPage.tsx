@@ -64,7 +64,7 @@ export default function AdminCustomersPage() {
                 <div className="text-[10px] font-black uppercase text-green-700 bg-green-100/80 px-2 py-0.5 rounded border border-green-200 truncate">
                   Life Value: ₹{customer.computedTotalSpent?.toLocaleString()}
                 </div>
-                {renderStars(customer.customerRating)}
+                {renderStars(customer.averageRating)}
               </div>
             </div>
           </div>
@@ -88,7 +88,7 @@ export default function AdminCustomersPage() {
                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span> 
                    <p className="text-green-600">Lifetime: ₹{activeCustomerObj.computedTotalSpent?.toLocaleString()}</p>
                    <span className="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
-                   {renderStars(activeCustomerObj.customerRating)}
+                   {renderStars(activeCustomerObj.averageRating)}
                  </div>
                </div>
             </div>

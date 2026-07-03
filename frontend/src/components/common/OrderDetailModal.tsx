@@ -1,4 +1,4 @@
-import { X, User, MapPin, ChefHat, Truck, Clock, IndianRupee, Package, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, User, MapPin, ChefHat, Truck, IndianRupee, Package, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { OrderData } from '../../features/admin/adminSlice';
 
 interface OrderDetailModalProps {

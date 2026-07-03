@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class DeliveryController {
 
     @PostMapping("/api/delivery/fee")
     @Operation(summary = "Calculate delivery fee (Public)")
-    public ResponseEntity<ApiResponse<DeliveryFeeResponse>> calculateFee(@RequestBody DeliveryFeeRequest request) {
+    public ResponseEntity<ApiResponse<DeliveryFeeResponse>> calculateFee(@Valid @RequestBody DeliveryFeeRequest request) {
         DeliveryFeeResponse response = deliveryFeeService.calculateFee(request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

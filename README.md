@@ -2,6 +2,13 @@
 
 A full-stack food ordering application with customer frontend, admin dashboard, and backend API.
 
+## Production deployment
+
+- **Render:** deploy with `render.yaml`; set `MONGODB_URI` and `CORS_ALLOWED_ORIGINS`.
+- **Vercel:** select `frontend` as the root directory and set `VITE_API_URL` to the Render API URL ending in `/api`.
+- **MongoDB Atlas:** store the connection string only in Render environment variables and allow Render network access.
+- **JWT:** use a cryptographically random `JWT_SECRET` of at least 64 characters.
+
 ## Project Structure
 
 ```
@@ -58,17 +65,15 @@ cd backend
 # Install dependencies (Maven will download automatically)
 ./mvnw clean install
 
-# Configure MongoDB connection if needed
-# Edit: src/main/resources/application.properties
-# spring.data.mongodb.uri=mongodb://localhost:27017/food_admin
+# Configure MONGODB_URI and JWT_SECRET from backend/.env.example
 
 # Run the application
 ./mvnw spring-boot:run
 ```
 
-The backend will start at `http://localhost:8080`
-- API: `http://localhost:8080/api/admin`
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
+The backend will start at `http://localhost:28080`
+- API: `http://localhost:28080/api`
+- Swagger UI: `http://localhost:28080/swagger-ui.html`
 
 ### 2. Frontend (Customer) Setup
 

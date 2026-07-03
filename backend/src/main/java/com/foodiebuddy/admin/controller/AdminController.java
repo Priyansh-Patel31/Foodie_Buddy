@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -29,7 +30,7 @@ public class AdminController {
 
     @PostMapping("/staff")
     @Operation(summary = "Create staff account")
-    public ResponseEntity<ApiResponse<LoginResponse>> createStaff(@RequestBody CreateStaffRequest request) {
+    public ResponseEntity<ApiResponse<LoginResponse>> createStaff(@Valid @RequestBody CreateStaffRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Staff created", authService.createStaff(request)));
     }
 

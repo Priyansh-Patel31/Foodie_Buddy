@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 
 @Document(collection = "users")
@@ -20,6 +21,7 @@ public class User {
     @Indexed(unique = true)
     private String email;
 
+    @JsonIgnore
     private String password;
 
     private String phone;
