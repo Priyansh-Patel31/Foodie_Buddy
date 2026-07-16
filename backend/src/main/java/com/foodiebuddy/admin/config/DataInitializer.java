@@ -108,7 +108,7 @@ public class DataInitializer implements CommandLineRunner {
 
         createMenuItem("Garlic Bread", "Roasted garlic butter bread sticks", new BigDecimal("150"),
                 breads.getId(), breads.getName(), true,
-                "https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=800&auto=format&fit=crop&q=80",
+                "https://i1.wp.com/thetwincookingproject.net/wp-content/uploads/2020/05/Homemade-Dominos-Garlic-Bread_-scaled.jpg?fit=1707%2C2560&ssl=1",
                 List.of(new IngredientRequirement(flour.getId(), "Wheat Flour", 0.1)));
 
         createMenuItem("Chicken Biryani", "Fragrant basmati rice with spiced chicken", new BigDecimal("349"),
