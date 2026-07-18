@@ -131,6 +131,99 @@ public class OrderService {
         return applyAndPersistStatus(order, newStatus);
     }
 
+    /**
+     * Manager confirms a PLACED order and becomes the managing manager.
+     */
+    public OrderDTO confirmOrder(String orderId, String managerId) {
+        Order order = findById(orderId);
+        User manager = userRepository.findById(managerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Manager not found"));
+
+        if (manager.getRole() != Role.ROLE_MANAGER && manager.getRole() != Role.ROLE_ADMIN) {
+            throw new BadRequestException("Only a manager or admin can confirm orders");
+        }
+
+        validateTransition(order, OrderStatus.CONFIRMED);
+
+        order.setManagingManagerId(manager.getId());
+        order.setManagingManagerName(manager.getName());
+
+        return applyAndPersistStatus(order, OrderStatus.CONFIRMED);
+    }
+
+    /**
+     * Manager assigns a chef to an order and tracks the managing manager.
+     */
+    public OrderDTO assignChefByManager(String orderId, String chefUserId, String managerId) {
+        Order order = findById(orderId);
+        User chef = userRepository.findById(chefUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Chef user not found"));
+
+        if (chef.getRole() != Role.ROLE_CHEF) {
+            throw new BadRequestException("Selected user is not a chef");
+        }
+
+        // Set managing manager if not already set
+        if (!hasText(order.getManagingManagerId()) && hasText(managerId)) {
+            userRepository.findById(managerId).ifPresent(mgr -> {
+                order.setManagingManagerId(mgr.getId());
+                order.setManagingManagerName(mgr.getName());
+            });
+        }
+
+        order.setAssignedChefId(chef.getId());
+        order.setAssignedChefUserName(chef.getName());
+        Order saved = orderRepository.save(order);
+        log.info("Chef {} assigned to order {} by manager {}", chef.getName(), orderId, managerId);
+        safeNotifyOrderUpdate(saved);
+        return toDTO(saved);
+    }
+
+    /**
+     * Manager assigns a delivery partner and tracks the managing manager.
+     */
+    public OrderDTO assignDeliveryByManager(String orderId, String deliveryUserId, String managerId) {
+        Order order = findById(orderId);
+        User deliveryUser = userRepository.findById(deliveryUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Delivery user not found"));
+
+        if (deliveryUser.getRole() != Role.ROLE_DELIVERY) {
+            throw new BadRequestException("Selected user is not a delivery partner");
+        }
+
+        // Set managing manager if not already set
+        if (!hasText(order.getManagingManagerId()) && hasText(managerId)) {
+            userRepository.findById(managerId).ifPresent(mgr -> {
+                order.setManagingManagerId(mgr.getId());
+                order.setManagingManagerName(mgr.getName());
+            });
+        }
+
+        order.setAssignedDeliveryUserId(deliveryUser.getId());
+        order.setAssignedDeliveryUserName(deliveryUser.getName());
+        Order saved = orderRepository.save(order);
+        log.info("Delivery {} assigned to order {} by manager {}", deliveryUser.getName(), orderId, managerId);
+        safeNotifyOrderUpdate(saved);
+        return toDTO(saved);
+    }
+
+    /**
+     * Get orders with PLACED status (new orders needing manager confirmation).
+     */
+    public List<OrderDTO> getPlacedOrders() {
+        return orderRepository.findByStatus(OrderStatus.PLACED).stream()
+                .sorted(ORDER_BY_CREATED_AT_DESC)
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get available staff by role.
+     */
+    public List<User> getAvailableStaffByRole(Role role) {
+        return userRepository.findByRoleAndStatus(role, com.foodiebuddy.admin.entity.enums.UserStatus.ACTIVE);
+    }
+
     public OrderDTO startCooking(String orderId, String chefUserId) {
         Order order = findById(orderId);
         validateChefOwnership(order, chefUserId);

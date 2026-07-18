@@ -35,10 +35,15 @@ export default function DeliveryDashboardPage() {
     o.assignedDeliveryId === user?.id && o.status === 'READY'
   );
 
-  const inTransit = orders.filter(o =>
-    o.assignedDeliveryId === user?.id &&
-    (o.status === 'OUT_FOR_DELIVERY' || o.status === 'PICKED_UP')
+  const pickedUp = orders.filter(o =>
+    o.assignedDeliveryId === user?.id && o.status === 'PICKED_UP'
   );
+
+  const outForDelivery = orders.filter(o =>
+    o.assignedDeliveryId === user?.id && o.status === 'OUT_FOR_DELIVERY'
+  );
+
+  const inTransit = [...pickedUp, ...outForDelivery];
 
   // All orders for this rider
   const allMyOrders = orders.filter(o => o.assignedDeliveryId === user?.id);
@@ -62,21 +67,39 @@ export default function DeliveryDashboardPage() {
   }, [waitingPickup.length]);
 
   // ========== ACTIONS ==========
+  // Step 1: Accept & Pick Up (READY → PICKED_UP)
   const handleAcceptPickup = (orderId: string) => {
     if (processingOrderIds[orderId]) return;
     setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
-    dispatch(updateOrderStatusApi({ id: orderId, status: 'OUT_FOR_DELIVERY' }))
+    dispatch(updateOrderStatusApi({ id: orderId, status: 'PICKED_UP' }))
       .unwrap()
       .then(() => {
-        toast.success(`Order ${orderId} accepted! Out for delivery now.`);
+        toast.success(`Order ${orderId} picked up! Now start the delivery.`);
         dispatch(fetchAllOrders());
       })
-      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to accept delivery.'))
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to pick up order.'))
       .finally(() => {
         setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
       });
   };
 
+  // Step 2: Start Delivery (PICKED_UP → OUT_FOR_DELIVERY)
+  const handleStartDelivery = (orderId: string) => {
+    if (processingOrderIds[orderId]) return;
+    setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
+    dispatch(updateOrderStatusApi({ id: orderId, status: 'OUT_FOR_DELIVERY' }))
+      .unwrap()
+      .then(() => {
+        toast.success(`Order ${orderId} is now out for delivery!`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : 'Failed to start delivery.'))
+      .finally(() => {
+        setProcessingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
+  };
+
+  // Step 3: Confirm Delivery (OUT_FOR_DELIVERY → DELIVERED)
   const handleConfirmDelivery = (orderId: string) => {
     if (processingOrderIds[orderId]) return;
     setProcessingOrderIds(prev => ({ ...prev, [orderId]: true }));
@@ -295,15 +318,71 @@ export default function DeliveryDashboardPage() {
         </div>
       )}
 
-      {/* ========== IN TRANSIT QUEUE (Confirm Delivery) ========== */}
-      {inTransit.length > 0 && (
+      {/* ========== PICKED UP QUEUE (Start Delivery) ========== */}
+      {pickedUp.length > 0 && (
+        <div>
+          <h2 className="text-lg font-black text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-indigo-500" />
+            Picked Up — Ready to Start Delivery
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {pickedUp.map(order => (
+              <div
+                key={order.id}
+                className="glass rounded-3xl border border-indigo-200 shadow-xl overflow-hidden flex flex-col hover:shadow-2xl transition-all cursor-pointer relative"
+                onClick={() => setSelectedOrder(order)}
+              >
+                <div className="absolute top-0 right-0 w-2 h-full bg-indigo-500" />
+
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-black text-gray-900">{order.id}</span>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200">
+                        <Package size={10} /> Picked Up
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-gray-400">
+                      {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  <div className="bg-gray-50/80 rounded-2xl p-4 border border-gray-100 flex items-start gap-3">
+                    <MapPin className="text-red-500 shrink-0 mt-1" size={18} />
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Delivering To</p>
+                      <p className="font-bold text-gray-800 text-sm">{order.deliveryAddress}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-1 flex items-center gap-1">
+                        <User size={12} /> {order.customerName}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={e => { e.stopPropagation(); handleStartDelivery(order.id); }}
+                      disabled={Boolean(processingOrderIds[order.id])}
+                      className="bg-indigo-600/80 backdrop-blur-md border border-white/20 hover:bg-indigo-600 text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Navigation size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Start Delivery →'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========== OUT FOR DELIVERY QUEUE (Confirm Delivery) ========== */}
+      {outForDelivery.length > 0 && (
         <div>
           <h2 className="text-lg font-black text-gray-800 uppercase tracking-wider mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-purple-500" />
-            In Transit — Delivering Now
+            Out For Delivery — Confirm at Destination
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {inTransit.map(order => (
+            {outForDelivery.map(order => (
               <div
                 key={order.id}
                 className="glass rounded-3xl border border-purple-200 shadow-xl overflow-hidden flex flex-col hover:shadow-2xl transition-all cursor-pointer relative"
@@ -376,7 +455,7 @@ export default function DeliveryDashboardPage() {
                       disabled={Boolean(processingOrderIds[order.id])}
                       className="bg-emerald-600/80 backdrop-blur-md border border-white/20 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-4 rounded-2xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <CheckCircle2 size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Confirm Delivery'}
+                      <CheckCircle2 size={16} /> {processingOrderIds[order.id] ? 'Updating...' : 'Confirm Delivery ✓'}
                     </button>
                   </div>
                 </div>

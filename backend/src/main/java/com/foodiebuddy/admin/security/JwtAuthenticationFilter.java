@@ -25,20 +25,27 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String token = getTokenFromRequest(request);
+        try {
+            String token = getTokenFromRequest(request);
 
-        if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
-            String email = tokenProvider.getEmailFromToken(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
+                Boolean isDemo = tokenProvider.isDemoFromToken(token);
+                com.foodiebuddy.admin.config.TenantContext.setDemo(isDemo);
+                
+                String email = tokenProvider.getEmailFromToken(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+
+            filterChain.doFilter(request, response);
+        } finally {
+            com.foodiebuddy.admin.config.TenantContext.clear();
         }
-
-        filterChain.doFilter(request, response);
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import {
   ClipboardList, CheckCircle2, Clock, ChefHat, Truck, MapPin, User,
-  Star, AlertCircle, RefreshCw, X
+  Star, AlertCircle, RefreshCw, X, ShieldCheck
 } from 'lucide-react';
-import { assignChefApi, assignDeliveryApi, fetchAllOrders } from '../../features/admin/adminSlice';
+import { confirmOrderApi, assignChefApi, assignDeliveryApi, fetchAllOrders } from '../../features/admin/adminSlice';
 import { OrderData } from '../../features/admin/adminSlice';
 import toast from 'react-hot-toast';
 
@@ -20,11 +20,12 @@ export default function ManagerOrdersPage() {
   const dispatch = useAppDispatch();
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
   const [assignModal, setAssignModal] = useState<AssignModal | null>(null);
+  const [confirmingOrderIds, setConfirmingOrderIds] = useState<Record<string, boolean>>({});
   
   // Track previous count for push notifications
   const prevOrderCountRef = useRef<number>(0);
 
-  // Audio Context (must be initialized after user interaction in some browsers, but fine for MVP)
+  // Audio Context
   const playNewOrderSound = () => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -40,14 +41,13 @@ export default function ManagerOrdersPage() {
     } catch(e) {}
   };
 
-  // Poll for order updates every 10 seconds (reflects chef/delivery status changes)
+  // Poll for order updates every 10 seconds
   useEffect(() => {
     const fetchOrders = async () => {
       const action = await dispatch(fetchAllOrders());
       if (fetchAllOrders.fulfilled.match(action)) {
         const newCount = action.payload.length;
         if (prevOrderCountRef.current !== 0 && newCount > prevOrderCountRef.current) {
-          // New order arrived!
           playNewOrderSound();
           toast.success('🔔 New Order Received!', { duration: 4000, style: { fontWeight: 'bold', fontSize: '16px' } });
         }
@@ -55,7 +55,6 @@ export default function ManagerOrdersPage() {
       }
     };
     
-    // Initial fetch
     fetchOrders();
     const interval = setInterval(fetchOrders, 10000);
     return () => clearInterval(interval);
@@ -64,7 +63,7 @@ export default function ManagerOrdersPage() {
   const chefs = users.filter(u => u.role === 'ROLE_CHEF');
   const riders = users.filter(u => u.role === 'ROLE_DELIVERY');
 
-  // Count active orders per role — chefs only count chef assignments, riders only delivery
+  // Count active orders per role
   const getChefLoad = (userId: string) => {
     return orders.filter(o =>
       o.assignedChefId === userId &&
@@ -81,9 +80,13 @@ export default function ManagerOrdersPage() {
   const activeOrders = orders.filter(o => !['DELIVERED', 'CANCELLED'].includes(o.status));
   const completedOrders = orders.filter(o => o.status === 'DELIVERED');
 
+  // Step 1: Orders needing confirmation (PLACED → CONFIRMED)
+  const needsConfirmOrders = activeOrders.filter(o => o.status === 'PLACED');
+  // Step 2: Confirmed orders needing chef assignment
   const needsChefOrders = activeOrders.filter(o =>
-    (o.status === 'PLACED' || o.status === 'CONFIRMED' || o.status === 'PENDING' || o.status === 'PREPARING') && !o.assignedChefId
+    (o.status === 'CONFIRMED') && !o.assignedChefId
   );
+  // Step 3: Ready orders needing delivery assignment
   const needsDeliveryOrders = activeOrders.filter(o => o.status === 'READY' && !o.assignedDeliveryId);
 
   const filteredOrders = statusFilter === 'ACTIVE' ? activeOrders
@@ -104,7 +107,8 @@ export default function ManagerOrdersPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'PLACED': case 'CONFIRMED': case 'PENDING': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'PLACED': return 'bg-red-100 text-red-700 border-red-200';
+      case 'CONFIRMED': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'PREPARING': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'READY': return 'bg-blue-100 text-blue-700 border-blue-200';
       case 'OUT_FOR_DELIVERY': case 'PICKED_UP': return 'bg-purple-100 text-purple-700 border-purple-200';
@@ -115,7 +119,8 @@ export default function ManagerOrdersPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'PLACED': case 'CONFIRMED': case 'PENDING': return <Clock size={13} />;
+      case 'PLACED': return <AlertCircle size={13} />;
+      case 'CONFIRMED': return <ShieldCheck size={13} />;
       case 'PREPARING': return <ChefHat size={13} />;
       case 'READY': return <CheckCircle2 size={13} />;
       case 'OUT_FOR_DELIVERY': case 'PICKED_UP': return <Truck size={13} />;
@@ -124,6 +129,23 @@ export default function ManagerOrdersPage() {
     }
   };
 
+  // ========== CONFIRM ORDER ==========
+  const handleConfirmOrder = (orderId: string) => {
+    if (confirmingOrderIds[orderId]) return;
+    setConfirmingOrderIds(prev => ({ ...prev, [orderId]: true }));
+    dispatch(confirmOrderApi(orderId))
+      .unwrap()
+      .then(() => {
+        toast.success(`✅ Order ${orderId} confirmed! Now assign a chef.`);
+        dispatch(fetchAllOrders());
+      })
+      .catch((error) => toast.error(typeof error === 'string' ? error : `Failed to confirm order ${orderId}.`))
+      .finally(() => {
+        setConfirmingOrderIds(prev => ({ ...prev, [orderId]: false }));
+      });
+  };
+
+  // ========== ASSIGN CHEF/DELIVERY ==========
   const handleAssign = (userId: string) => {
     if (!assignModal) return;
     const { order, mode } = assignModal;
@@ -136,7 +158,6 @@ export default function ManagerOrdersPage() {
         .then(() => {
           toast.success(`👨‍🍳 ${worker.name} assigned as Chef for ${order.id}.`);
           dispatch(fetchAllOrders());
-          // Order stays in current status — chef must accept from their dashboard
         })
         .catch((error) => toast.error(typeof error === 'string' ? error : `Failed to assign chef for ${order.id}.`));
     } else {
@@ -144,7 +165,6 @@ export default function ManagerOrdersPage() {
         .unwrap()
         .then(() => {
           dispatch(fetchAllOrders());
-          // Don't auto-change status! Rider must accept from their dashboard.
           if (order.status === 'READY') {
             toast.success(`🛵 ${worker.name} dispatched for ${order.id}. Waiting for rider to pick up.`);
           } else {
@@ -168,31 +188,73 @@ export default function ManagerOrdersPage() {
         <h1 className="text-3xl font-black text-gray-900 font-outfit flex items-center gap-3">
           <ClipboardList className="text-green-600" size={32} /> Order Dispatch
         </h1>
-        <p className="text-gray-500 font-medium mt-1">Assign kitchen staff and riders. Monitor all active order queues in real-time.</p>
+        <p className="text-gray-500 font-medium mt-1">Confirm orders, assign kitchen staff and riders. Monitor all active order queues in real-time.</p>
       </div>
 
-      {/* Urgent Alerts */}
-      {(needsChefOrders.length > 0 || needsDeliveryOrders.length > 0) && (
+      {/* ========== STEP 1: URGENT — Orders Needing Confirmation ========== */}
+      {needsConfirmOrders.length > 0 && (
         <div className="space-y-3">
-          {needsChefOrders.map(o => (
-            <div key={o.id + '-chef'} className="flex items-center justify-between bg-red-50 border border-red-200 rounded-2xl px-5 py-4 shadow-sm animate-pulse-once">
+          <h2 className="text-sm font-black text-red-700 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            Step 1 — New Orders Awaiting Your Confirmation ({needsConfirmOrders.length})
+          </h2>
+          {needsConfirmOrders.map(o => (
+            <div key={o.id + '-confirm'} className="flex items-center justify-between bg-red-50 border-2 border-red-300 rounded-2xl px-5 py-4 shadow-sm animate-pulse-once">
               <div className="flex items-center gap-3">
                 <AlertCircle size={20} className="text-red-500 shrink-0" />
                 <div>
-                  <p className="font-black text-red-700 text-sm">⚠️ {o.id} — New Order! Assign a Chef</p>
-                  <p className="text-xs text-red-500">{o.customerName} · {o.deliveryAddress}</p>
+                  <p className="font-black text-red-700 text-sm">🆕 {o.id} — New Order! Review & Confirm</p>
+                  <p className="text-xs text-red-500">{o.customerName} · {o.deliveryAddress} · ₹{o.totalAmount ?? o.charge}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleConfirmOrder(o.id)}
+                disabled={Boolean(confirmingOrderIds[o.id])}
+                className="ml-4 bg-green-600 hover:bg-green-700 text-white font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-green-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <ShieldCheck size={14} /> {confirmingOrderIds[o.id] ? 'Confirming...' : 'Confirm Order ✓'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ========== STEP 2: URGENT — Confirmed Orders Needing Chef ========== */}
+      {needsChefOrders.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-black text-orange-700 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+            Step 2 — Confirmed Orders Needing Chef Assignment ({needsChefOrders.length})
+          </h2>
+          {needsChefOrders.map(o => (
+            <div key={o.id + '-chef'} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <ChefHat size={20} className="text-orange-500 shrink-0" />
+                <div>
+                  <p className="font-black text-orange-700 text-sm">👨‍🍳 {o.id} — Assign a Chef</p>
+                  <p className="text-xs text-orange-500">{o.customerName} · {o.deliveryAddress}</p>
                 </div>
               </div>
               <button
                 onClick={() => openAssign(o, 'chef')}
-                className="ml-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest px-5 py-2 rounded-xl transition-all shadow-lg shadow-red-200"
+                className="ml-4 bg-orange-600 hover:bg-orange-700 text-white font-black text-xs uppercase tracking-widest px-5 py-2 rounded-xl transition-all shadow-lg shadow-orange-200"
               >
                 Assign Chef →
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ========== STEP 3: Ready Orders Needing Delivery ========== */}
+      {needsDeliveryOrders.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+            Step 3 — Food Ready! Assign Delivery ({needsDeliveryOrders.length})
+          </h2>
           {needsDeliveryOrders.map(o => (
-            <div key={o.id + '-delivery'} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 shadow-sm animate-pulse-once">
+            <div key={o.id + '-delivery'} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <Truck size={20} className="text-blue-500 shrink-0" />
                 <div>
@@ -269,17 +331,20 @@ export default function ManagerOrdersPage() {
       {/* Orders Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredOrders.map(order => {
-          const needsChef = ['PLACED', 'CONFIRMED', 'PENDING', 'PREPARING'].includes(order.status) && !order.assignedChefId;
-          const canChangeChef = ['PLACED', 'CONFIRMED', 'PENDING', 'PREPARING'].includes(order.status);
+          const isPlaced = order.status === 'PLACED';
+          const isConfirmed = order.status === 'CONFIRMED';
+          const needsChef = isConfirmed && !order.assignedChefId;
+          const canChangeChef = ['CONFIRMED', 'PREPARING'].includes(order.status);
           const needsRider = order.status === 'READY' && !order.assignedDeliveryId;
-          // Rider can be pre-assigned during PREPARING, assigned at READY, or changed during delivery
           const canAssignRider = ['PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'PICKED_UP'].includes(order.status);
           const canChangeRider = canAssignRider;
           return (
             <div
               key={order.id}
               className={`glass rounded-3xl p-6 border shadow-xl bg-white/40 hover:shadow-2xl transition-all group ${
-                needsChef ? 'border-red-300 shadow-red-100' : needsRider ? 'border-blue-300 shadow-blue-100' : 'border-white/60'
+                isPlaced ? 'border-red-300 shadow-red-100' :
+                needsChef ? 'border-orange-300 shadow-orange-100' :
+                needsRider ? 'border-blue-300 shadow-blue-100' : 'border-white/60'
               }`}
             >
               <div className="flex items-center justify-between mb-4">
@@ -303,80 +368,95 @@ export default function ManagerOrdersPage() {
                 </div>
               </div>
 
+              {/* Confirm Button for PLACED orders */}
+              {isPlaced && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => handleConfirmOrder(order.id)}
+                    disabled={Boolean(confirmingOrderIds[order.id])}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-black text-xs uppercase tracking-widest py-3 rounded-xl transition-all shadow-lg shadow-green-200 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <ShieldCheck size={14} /> {confirmingOrderIds[order.id] ? 'Confirming...' : 'Confirm This Order ✓'}
+                  </button>
+                </div>
+              )}
+
               {/* Assignments */}
-              <div className="bg-gray-50/60 rounded-2xl p-3 space-y-2 mb-4">
-                {/* Chef Assignment */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                    <ChefHat size={12} className="text-yellow-500" /> Chef
-                  </div>
-                  {order.assignedChefName ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-gray-800">{order.assignedChefName}</span>
-                      {canChangeChef && (
-                        <button onClick={() => openAssign(order, 'chef')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
-                          <RefreshCw size={11} />
-                        </button>
-                      )}
+              {!isPlaced && (
+                <div className="bg-gray-50/60 rounded-2xl p-3 space-y-2 mb-4">
+                  {/* Chef Assignment */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                      <ChefHat size={12} className="text-yellow-500" /> Chef
                     </div>
-                  ) : (
-                    needsChef ? (
-                      <button
-                        onClick={() => openAssign(order, 'chef')}
-                        className="text-[10px] font-black uppercase bg-red-600/80 backdrop-blur-sm border border-white/10 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-red-600 transition-all"
-                      >
-                        Assign Now!
-                      </button>
+                    {order.assignedChefName ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-gray-800">{order.assignedChefName}</span>
+                        {canChangeChef && (
+                          <button onClick={() => openAssign(order, 'chef')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
+                            <RefreshCw size={11} />
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-[10px] text-gray-400">—</span>
-                    )
-                  )}
-                </div>
-                {/* Rider Assignment */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                    <Truck size={12} className="text-purple-500" /> Rider
-                  </div>
-                  {order.assignedDeliveryName ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-gray-800">{order.assignedDeliveryName}</span>
-                      {!['PLACED', 'CONFIRMED', 'PENDING'].includes(order.status) && (
-                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600 border border-green-100">
-                          {order.status === 'PREPARING' ? 'Pre-assigned' : 'Assigned'}
-                        </span>
-                      )}
-                      {canChangeRider && (
-                        <button onClick={() => openAssign(order, 'delivery')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
-                          <RefreshCw size={11} />
+                      needsChef ? (
+                        <button
+                          onClick={() => openAssign(order, 'chef')}
+                          className="text-[10px] font-black uppercase bg-orange-600/80 backdrop-blur-sm border border-white/10 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-orange-600 transition-all"
+                        >
+                          Assign Now!
                         </button>
-                      )}
+                      ) : (
+                        <span className="text-[10px] text-gray-400">—</span>
+                      )
+                    )}
+                  </div>
+                  {/* Rider Assignment */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                      <Truck size={12} className="text-purple-500" /> Rider
                     </div>
-                  ) : (
-                    needsRider ? (
-                      <button
-                        onClick={() => openAssign(order, 'delivery')}
-                        className="text-[10px] font-black uppercase bg-blue-600/80 backdrop-blur-sm border border-white/10 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-blue-600 transition-all"
-                      >
-                        Dispatch!
-                      </button>
-                    ) : canAssignRider && !order.assignedDeliveryId ? (
-                      <button
-                        onClick={() => openAssign(order, 'delivery')}
-                        className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg hover:bg-blue-100 transition-all"
-                      >
-                        Pre-assign Rider
-                      </button>
+                    {order.assignedDeliveryName ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-gray-800">{order.assignedDeliveryName}</span>
+                        {!['PLACED', 'CONFIRMED'].includes(order.status) && (
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-green-50 text-green-600 border border-green-100">
+                            {order.status === 'PREPARING' ? 'Pre-assigned' : 'Assigned'}
+                          </span>
+                        )}
+                        {canChangeRider && (
+                          <button onClick={() => openAssign(order, 'delivery')} className="text-gray-400 hover:text-primary-500 transition-colors" title="Re-assign">
+                            <RefreshCw size={11} />
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-[10px] text-gray-400">—</span>
-                    )
-                  )}
+                      needsRider ? (
+                        <button
+                          onClick={() => openAssign(order, 'delivery')}
+                          className="text-[10px] font-black uppercase bg-blue-600/80 backdrop-blur-sm border border-white/10 text-white px-3 py-1 rounded-lg animate-pulse hover:bg-blue-600 transition-all"
+                        >
+                          Dispatch!
+                        </button>
+                      ) : canAssignRider && !order.assignedDeliveryId ? (
+                        <button
+                          onClick={() => openAssign(order, 'delivery')}
+                          className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1 rounded-lg hover:bg-blue-100 transition-all"
+                        >
+                          Pre-assign Rider
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">—</span>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                 <div>
-                  <p className="text-xl font-black text-primary-600">₹{order.charge}</p>
-                  <p className="text-[10px] font-bold text-green-500 uppercase">Profit: +₹{order.profit}</p>
+                  <p className="text-xl font-black text-primary-600">₹{order.totalAmount ?? order.charge}</p>
+                  {order.profit > 0 && <p className="text-[10px] font-bold text-green-500 uppercase">Profit: +₹{order.profit}</p>}
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   {order.orderRating && (

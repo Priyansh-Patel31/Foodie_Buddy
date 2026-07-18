@@ -83,7 +83,7 @@ export default function AnimatedLogo() {
         >
           foodie
         </span>
-        <span className="text-[10px] font-bold tracking-[0.2em] text-gray-400 uppercase -mt-0.5">
+        <span className="text-[10px] font-bold tracking-[0.2em] text-gray-600 uppercase -mt-0.5">
           buddy
         </span>
       </div>

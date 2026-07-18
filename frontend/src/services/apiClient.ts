@@ -12,7 +12,7 @@ const apiClient = axios.create({
 // Interceptor for Authentication
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('foodieBuddyToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
   (error) => {
     // Handle global errors here (e.g., redirect to login on 401)
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('foodieBuddyToken');
       window.location.href = '/'; // Or trigger a Redux action
     }
     return Promise.reject(error);

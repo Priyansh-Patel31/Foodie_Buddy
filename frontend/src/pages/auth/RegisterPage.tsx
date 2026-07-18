@@ -42,7 +42,12 @@ export default function RegisterPage() {
       toast.success('Customer account created. Please sign in.');
       navigate('/login');
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Registration failed. Please check your details.');
+      if (error.response?.data?.data && typeof error.response.data.data === 'object') {
+        const fieldErrors = Object.values(error.response.data.data).join(' | ');
+        toast.error(`Validation failed: ${fieldErrors}`);
+      } else {
+        toast.error(error.response?.data?.message || 'Registration failed. Please check your details.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -171,6 +176,7 @@ export default function RegisterPage() {
                     </button>
                   </div>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">Must include uppercase, lowercase, number, and special char.</p>
               </div>
 
               <div>

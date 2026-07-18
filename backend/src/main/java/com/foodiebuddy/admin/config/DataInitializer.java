@@ -38,8 +38,19 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        log.info("Checking database for initialization...");
+        log.info("Checking database for initialization (Production)...");
+        seedDatabase();
 
+        log.info("Checking database for initialization (Demo)...");
+        try {
+            TenantContext.setDemo(true);
+            seedDatabase();
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    public void seedDatabase() {
         log.info("Initializing seed data for single-restaurant ecosystem...");
 
         // 1. Restaurant Config
@@ -108,7 +119,7 @@ public class DataInitializer implements CommandLineRunner {
 
         createMenuItem("Garlic Bread", "Roasted garlic butter bread sticks", new BigDecimal("150"),
                 breads.getId(), breads.getName(), true,
-                "https://i1.wp.com/thetwincookingproject.net/wp-content/uploads/2020/05/Homemade-Dominos-Garlic-Bread_-scaled.jpg?fit=1707%2C2560&ssl=1",
+                "https://cdn.jwplayer.com/v2/media/MvCHkL6u/poster.jpg?width=720",
                 List.of(new IngredientRequirement(flour.getId(), "Wheat Flour", 0.1)));
 
         createMenuItem("Chicken Biryani", "Fragrant basmati rice with spiced chicken", new BigDecimal("349"),
@@ -140,6 +151,9 @@ public class DataInitializer implements CommandLineRunner {
 
     // ========================== USERS ==========================
     private void seedUsers() {
+        createStaff("Demo Admin", "demo@foodie.com", "demo123", Role.ROLE_ADMIN,
+                new BigDecimal("80000"), 0);
+        
         adminUser = createStaff("Admin User", "admin@foodie.com", "Admin@123", Role.ROLE_ADMIN,
                 new BigDecimal("80000"), 0);
         managerUser = createStaff("Restaurant Manager", "manager@foodie.com", "Manager@123", Role.ROLE_MANAGER,
@@ -253,7 +267,14 @@ public class DataInitializer implements CommandLineRunner {
     private User createStaff(String name, String email, String password, Role role,
                              BigDecimal baseSalary, int leavesTaken) {
         if (userRepository.existsByEmail(email)) {
-            return userRepository.findByEmail(email).orElseThrow();
+            User existing = userRepository.findByEmail(email).orElseThrow();
+            // Re-hash password if it has drifted from the expected seed value
+            if (!passwordEncoder.matches(password, existing.getPassword())) {
+                log.warn("Password drift detected for seed user {}. Re-hashing.", email);
+                existing.setPassword(passwordEncoder.encode(password));
+                userRepository.save(existing);
+            }
+            return existing;
         }
         User u = User.builder()
                 .name(name).email(email)
@@ -269,7 +290,13 @@ public class DataInitializer implements CommandLineRunner {
     private User createCustomer(String name, String email, String password, String phone,
                                 Double lat, Double lng) {
         if (userRepository.existsByEmail(email)) {
-            return userRepository.findByEmail(email).orElseThrow();
+            User existing = userRepository.findByEmail(email).orElseThrow();
+            if (!passwordEncoder.matches(password, existing.getPassword())) {
+                log.warn("Password drift detected for seed user {}. Re-hashing.", email);
+                existing.setPassword(passwordEncoder.encode(password));
+                userRepository.save(existing);
+            }
+            return existing;
         }
         User u = User.builder()
                 .name(name).email(email)
@@ -307,7 +334,15 @@ public class DataInitializer implements CommandLineRunner {
     private void createMenuItem(String name, String desc, BigDecimal price,
                                 String catId, String catName, boolean isVeg,
                                 String imageUrl, List<IngredientRequirement> ingredients) {
-        if (menuItemRepository.findByName(name).isPresent()) return;
+        var existing = menuItemRepository.findByName(name);
+        if (existing.isPresent()) {
+            MenuItem m = existing.get();
+            if (!m.getImageUrl().equals(imageUrl)) {
+                m.setImageUrl(imageUrl);
+                menuItemRepository.save(m);
+            }
+            return;
+        }
         MenuItem m = MenuItem.builder()
                 .name(name).description(desc).price(price)
                 .categoryId(catId).categoryName(catName)

@@ -38,12 +38,20 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST,
                         "/api/auth/login", "/api/auth/register").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                // WebSocket & delivery fee are public
+                .requestMatchers("/ws/**", "/api/delivery/fee").permitAll()
 
-                // Role-gated endpoints
+                // Customer endpoints
                 .requestMatchers("/api/orders/place", "/api/orders/my/**").hasAuthority("ROLE_CUSTOMER")
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/orders/*/rate").hasAuthority("ROLE_CUSTOMER")
+
+                // Manager endpoints (dedicated order management flow)
+                .requestMatchers("/api/manager/**").hasAnyAuthority("ROLE_MANAGER", "ROLE_ADMIN")
+
                 // Admin read endpoints — also accessible by Manager for their dashboard
                 .requestMatchers(org.springframework.http.HttpMethod.GET,
                         "/api/admin/menu", "/api/admin/orders", "/api/admin/users",
+                        "/api/admin/staff", "/api/admin/customers",
                         "/api/admin/financials/transactions", "/api/admin/dashboard", "/api/admin/config")
                     .hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER")
                 // Manager can toggle menu availability and manage active delivery assignments
@@ -52,11 +60,13 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.PATCH, "/api/admin/orders/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_MANAGER")
                 // Admin-only write endpoints
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/manager/**").hasAnyAuthority("ROLE_MANAGER", "ROLE_ADMIN")
+
+                // Staff role-based endpoints
                 .requestMatchers("/api/kitchen/**").hasAuthority("ROLE_CHEF")
                 .requestMatchers("/api/waiter/**").hasAuthority("ROLE_WAITER")
                 .requestMatchers("/api/cleaner/**").hasAuthority("ROLE_CLEANER")
-                .requestMatchers("/api/delivery/**").hasAuthority("ROLE_DELIVERY")
+                .requestMatchers("/api/delivery/my-orders", "/api/delivery/pickup/**",
+                        "/api/delivery/start/**", "/api/delivery/deliver/**").hasAuthority("ROLE_DELIVERY")
 
                 .anyRequest().authenticated()
             )

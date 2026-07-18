@@ -31,7 +31,7 @@ export default function ChefDashboardPage() {
   // Separate task queues
   const pendingOrders = orders.filter(o =>
     o.assignedChefId === user?.id &&
-    (o.status === 'PLACED' || o.status === 'CONFIRMED')
+    o.status === 'CONFIRMED'
   );
 
   const inProgressOrders = orders.filter(o =>

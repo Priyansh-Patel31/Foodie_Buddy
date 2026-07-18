@@ -62,7 +62,9 @@ export default function LoginPage() {
           token: loginData.token,
         }));
 
-        dispatch(fetchAdminData());
+        if (loginData.role !== ROLES.CUSTOMER) {
+          dispatch(fetchAdminData());
+        }
         toast.success(`Welcome back, ${loginData.name}!`);
       }
     } catch (error: any) {
@@ -87,7 +89,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <main className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       {/* Background Ornaments */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-400/20 rounded-full blur-[100px]" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-orange-400/20 rounded-full blur-[100px]" />
@@ -102,7 +104,7 @@ export default function LoginPage() {
         {customerRegistrationEnabled && (
           <p className="mt-2 text-center text-sm text-gray-600 font-medium">
             Ordering for yourself?{' '}
-            <Link to="/register" className="font-bold text-primary-600 hover:text-primary-500 transition-colors">
+            <Link to="/register" className="font-bold text-orange-700 hover:text-orange-800 transition-colors">
               Create a customer account
             </Link>
           </p>
@@ -145,8 +147,8 @@ export default function LoginPage() {
                   required
                   disabled={isSubmitting}
                 />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-gray-400 hover:text-primary-500 focus:outline-none">
+                <div className="absolute inset-y-0 right-0 pr-1 flex items-center">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Toggle password visibility" className="p-2 min-w-[24px] min-h-[24px] flex items-center justify-center text-gray-500 hover:text-orange-700 focus:outline-none">
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
@@ -161,7 +163,7 @@ export default function LoginPage() {
                 </label>
               </div>
               <div className="text-sm">
-                <a href="#" className="font-bold text-primary-600 hover:text-primary-500">
+                <a href="#" className="font-bold text-orange-700 hover:text-orange-800">
                   Forgot your password?
                 </a>
               </div>
@@ -197,9 +199,9 @@ export default function LoginPage() {
                     <acc.icon className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{acc.role.replace('ROLE_', '')}</span>
+                    <span className="text-[10px] font-bold text-gray-700 uppercase">{acc.role.replace('ROLE_', '')}</span>
                     <span className="text-[11px] font-semibold text-gray-900 truncate">{acc.email}</span>
-                    <span className="text-[10px] text-gray-500">{acc.password}</span>
+                    <span className="text-[10px] text-gray-700">{acc.password}</span>
                   </div>
                 </button>
               ))}
@@ -207,6 +209,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

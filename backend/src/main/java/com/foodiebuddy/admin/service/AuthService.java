@@ -24,29 +24,41 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         String email = request.getEmail().trim().toLowerCase();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid credentials"));
+        boolean isDemo = "demo@foodie.com".equals(email);
+        
+        try {
+            if (isDemo) {
+                com.foodiebuddy.admin.config.TenantContext.setDemo(true);
+            }
+            
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid credentials"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            log.warn("Authentication failed for email {}", email);
-            throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                log.warn("Authentication failed for email {}", email);
+                throw new org.springframework.security.authentication.BadCredentialsException("Invalid credentials");
+            }
+
+            if (user.getStatus() == UserStatus.SUSPENDED) {
+                log.warn("Authentication denied for suspended account {}", email);
+                throw new org.springframework.security.authentication.DisabledException("Account is suspended");
+            }
+
+            String token = tokenProvider.generateToken(user);
+            log.info("Authentication succeeded for user {} with role {}", email, user.getRole());
+
+            return LoginResponse.builder()
+                    .token(token)
+                    .userId(user.getId())
+                    .name(user.getName())
+                    .email(user.getEmail())
+                    .role(user.getRole().name())
+                    .build();
+        } finally {
+            if (isDemo) {
+                com.foodiebuddy.admin.config.TenantContext.clear();
+            }
         }
-
-        if (user.getStatus() == UserStatus.SUSPENDED) {
-            log.warn("Authentication denied for suspended account {}", email);
-            throw new org.springframework.security.authentication.DisabledException("Account is suspended");
-        }
-
-        String token = tokenProvider.generateToken(user);
-        log.info("Authentication succeeded for user {} with role {}", email, user.getRole());
-
-        return LoginResponse.builder()
-                .token(token)
-                .userId(user.getId())
-                .name(user.getName())
-                .email(user.getEmail())
-                .role(user.getRole().name())
-                .build();
     }
 
     public LoginResponse register(RegisterRequest request) {

@@ -35,6 +35,7 @@ public class JwtTokenProvider {
         claims.put("userId", user.getId());
         claims.put("role", user.getRole().name());
         claims.put("name", user.getName());
+        claims.put("isDemo", com.foodiebuddy.admin.config.TenantContext.isDemo());
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -58,6 +59,12 @@ public class JwtTokenProvider {
     public String getRoleFromToken(String token) {
         return (String) Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().get("role");
+    }
+
+    public Boolean isDemoFromToken(String token) {
+        Boolean isDemo = (Boolean) Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody().get("isDemo");
+        return isDemo != null ? isDemo : false;
     }
 
     public boolean validateToken(String token) {

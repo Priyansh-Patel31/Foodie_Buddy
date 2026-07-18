@@ -244,8 +244,9 @@ export const fetchAllOrders = createAsyncThunk('admin/fetchOrders', async (_, { 
      // Still loading auth, wait
      throw new Error('Auth not loaded');
   }
-  let endpoint = '/admin/orders'; // default for ADMIN / MANAGER
+  let endpoint = '/admin/orders'; // default for ADMIN
   if (role === 'ROLE_CUSTOMER') endpoint = '/orders/my';
+  else if (role === 'ROLE_MANAGER') endpoint = '/manager/orders';
   else if (role === 'ROLE_CHEF') endpoint = '/kitchen/my-orders';
   else if (role === 'ROLE_DELIVERY') endpoint = '/delivery/my-orders';
   try {
@@ -395,11 +396,33 @@ export const updateLeavesApi = createAsyncThunk('admin/updateLeaves', async ({ i
   }
 });
 
+export const confirmOrderApi = createAsyncThunk(
+  'admin/confirmOrder',
+  async (orderId: string, { getState, rejectWithValue }) => {
+  try {
+    const res = await apiClient.put(`/manager/orders/${orderId}/confirm`);
+    return res.data.data || res.data;
+  } catch (error: any) {
+    if (isHttpError(error)) {
+      return rejectWithValue(getApiErrorMessage(error));
+    }
+    // Fallback: update locally when backend is unreachable
+    const state = getState() as any;
+    const order = state.admin.orders.find((o: any) => o.id === orderId);
+    if (order) {
+      const updated = mapOrder({ ...order, status: 'CONFIRMED' });
+      upsertOfflineOrder(updated);
+      return updated;
+    }
+    return rejectWithValue('Order not found');
+  }
+});
+
 export const assignChefApi = createAsyncThunk(
   'admin/assignChef',
   async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState, rejectWithValue }) => {
   try {
-    const res = await apiClient.put(`/admin/orders/${orderId}/assign-chef/${userId}`);
+    const res = await apiClient.put(`/manager/orders/${orderId}/assign-chef/${userId}`);
     return res.data.data || res.data;
   } catch (error: any) {
     if (isHttpError(error)) {
@@ -420,7 +443,7 @@ export const assignDeliveryApi = createAsyncThunk(
   'admin/assignDelivery',
   async ({ orderId, userId, userName }: { orderId: string; userId: string; userName: string }, { getState, rejectWithValue }) => {
   try {
-    const res = await apiClient.put(`/admin/orders/${orderId}/assign-delivery/${userId}`);
+    const res = await apiClient.put(`/manager/orders/${orderId}/assign-delivery/${userId}`);
     return res.data.data || res.data;
   } catch (error: any) {
     if (isHttpError(error)) {
@@ -442,12 +465,12 @@ export const updateOrderStatusApi = createAsyncThunk(
   async ({ id, status }: { id: string; status: string }, { getState, rejectWithValue }) => {
   // Route to the correct backend endpoint based on target status
   const endpointMap: Record<string, string> = {
-    'CONFIRMED': `/admin/orders/${id}/confirm`,
-    'CANCELLED': `/admin/orders/${id}/cancel`,
+    'CONFIRMED': `/manager/orders/${id}/confirm`,
+    'CANCELLED': `/manager/orders/${id}/cancel`,
     'PREPARING': `/kitchen/start/${id}`,
     'READY': `/kitchen/ready/${id}`,
-    'OUT_FOR_DELIVERY': `/delivery/start/${id}`,
     'PICKED_UP': `/delivery/pickup/${id}`,
+    'OUT_FOR_DELIVERY': `/delivery/start/${id}`,
     'DELIVERED': `/delivery/deliver/${id}`,
   };
 
@@ -832,6 +855,12 @@ export const adminSlice = createSlice({
     });
 
     builder.addCase(updateOrderStatusApi.fulfilled, (state, action) => {
+      const mapped = mapOrder(action.payload);
+      const idx = state.orders.findIndex(o => o.id === mapped.id);
+      if (idx !== -1) state.orders[idx] = mapped;
+    });
+
+    builder.addCase(confirmOrderApi.fulfilled, (state, action) => {
       const mapped = mapOrder(action.payload);
       const idx = state.orders.findIndex(o => o.id === mapped.id);
       if (idx !== -1) state.orders[idx] = mapped;
